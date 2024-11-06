@@ -23,10 +23,10 @@ const Main: React.FC = () => {
 
       const overlap = shapes.some((shape) => {
         return (
-          x >= shape.x &&
-          x <= shape.x + (shape.type === "rectangle" ? 100 : 50) &&
-          y >= shape.y &&
-          y <= shape.y + (shape.type === "rectangle" ? 100 : 50)
+          x >= shape.x - 50 &&
+          x <= shape.x + (shape.type === "rectangle" ? 50 : 0) &&
+          y >= shape.y - 50 &&
+          y <= shape.y + (shape.type === "rectangle" ? 50 : 0)
         );
       });
 
@@ -60,19 +60,26 @@ const Main: React.FC = () => {
               return (
                 <Rect
                   key={shape.id}
-                  x={shape.x}
-                  y={shape.y}
+                  x={shape.x - 50}
+                  y={shape.y - 50}
                   width={100}
                   height={100}
                   fill="blue"
                 />
+                // <Rectangle
+                //   key={shape.id} // Use rect.id as the key for better uniqueness
+                //   shapeProps={rect}
+                //   isSelected={rect.id === selectedId}
+                //   onSelect={() => {}}
+                //   onChange={() => {}}
+                // />
               );
             } else if (shape.type === "circle") {
               return (
                 <Circle
                   key={shape.id}
-                  x={shape.x + 25}
-                  y={shape.y + 25}
+                  x={shape.x}
+                  y={shape.y}
                   radius={25}
                   fill="red"
                 />
@@ -82,11 +89,11 @@ const Main: React.FC = () => {
                 <Star
                   key={shape.id}
                   x={shape.x}
-                  y={shape.x}
+                  y={shape.y}
                   numPoints={5}
                   innerRadius={20}
                   outerRadius={40}
-                  fill="yellow"
+                  fill="green"
                 />
               );
             }

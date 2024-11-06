@@ -1,7 +1,7 @@
 // src/Sidebar.tsx
 import React from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSquare, faCircle } from "@fortawesome/free-solid-svg-icons";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { faSquare, faCircle } from "@fortawesome/free-solid-svg-icons";
 
 interface SidebarProps {
   onDragStart: (
@@ -19,16 +19,16 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   shapeType,
   onDragStart,
 }) => {
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "rectangle":
-        return <FontAwesomeIcon icon={faSquare} color="blue" />;
-      case "circle":
-        return <FontAwesomeIcon icon={faCircle} color="blue" />;
-      default:
-        return null;
-    }
-  };
+  // const getIcon = (type: string) => {
+  //   switch (type) {
+  //     case "rectangle":
+  //       return <FontAwesomeIcon icon={faSquare} color="blue" />;
+  //     case "circle":
+  //       return <FontAwesomeIcon icon={faCircle} color="blue" />;
+  //     default:
+  //       return null;
+  //   }
+  // };
   return (
     <div
       draggable

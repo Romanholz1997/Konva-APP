@@ -68,7 +68,7 @@
 // src/App.tsx
 import React from "react";
 import Sidebar from "./components/Sidebar";
-import Main from "./components/main";
+import Main from "./components/Main";
 
 const App: React.FC = () => {
   const handleDragStart = (
