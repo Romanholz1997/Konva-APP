@@ -1,17 +1,18 @@
-// src/components/CircleShape.tsx
+// src/components/Rectangle.tsx
 
 import React, { useRef, useEffect } from "react";
-import { Circle as KonvaCircle, Transformer } from "react-konva";
+import { Rect, Transformer } from "react-konva";
 import Konva from "konva";
-import { CircleProps } from "../types";
+import { RectangleProps } from "../../types/types";
 
-const CircleShape: React.FC<CircleProps> = ({
+const Rectangle: React.FC<RectangleProps> = ({
   shapeProps,
   isSelected,
   onSelect,
   onChange,
+  onDragMove,
 }) => {
-  const shapeRef = useRef<Konva.Circle>(null);
+  const shapeRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
@@ -22,16 +23,16 @@ const CircleShape: React.FC<CircleProps> = ({
     }
   }, [isSelected]);
 
-  // Exclude `id` from being passed to <KonvaCircle />
-  const { id, ...circleProps } = shapeProps;
+  // Exclude `id` from being passed to <Rect />
+  const { id, ...rectProps } = shapeProps;
 
   return (
     <>
-      <KonvaCircle
+      <Rect
         onClick={onSelect}
         onTap={onSelect}
         ref={shapeRef}
-        {...circleProps} // Spread the remaining props without `id`
+        {...rectProps} // Spread the remaining props without `id`
         draggable
         onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
           onChange({
@@ -40,16 +41,14 @@ const CircleShape: React.FC<CircleProps> = ({
             y: e.target.y(),
           });
         }}
+        onDragMove={onDragMove}
         onTransformEnd={(e: Konva.KonvaEventObject<Event>) => {
           const node = shapeRef.current;
           if (!node) return;
 
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
-
-          // For circles, enforce uniform scaling
-          const newScale = Math.max(scaleX, scaleY);
-
+          const rotation = node.rotation();
           // Reset scale to 1 to maintain consistent sizing
           node.scaleX(1);
           node.scaleY(1);
@@ -58,17 +57,19 @@ const CircleShape: React.FC<CircleProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            radius: Math.max(5, node.radius() * newScale),
+            width: Math.max(5, node.width() * scaleX),
+            height: Math.max(5, node.height() * scaleY),
+            rotation: rotation,
           });
         }}
       />
       {isSelected && (
         <Transformer
           ref={trRef}
-          rotateEnabled={false} // Circles don't need rotation
+          rotateEnabled={true} // Rectangles might not need rotation
           boundBoxFunc={(oldBox, newBox) => {
             // Limit resize to minimum size
-            if (newBox.width < 10 || newBox.height < 10) {
+            if (newBox.width < 5 || newBox.height < 5) {
               return oldBox;
             }
             return newBox;
@@ -79,4 +80,4 @@ const CircleShape: React.FC<CircleProps> = ({
   );
 };
 
-export default CircleShape;
+export default Rectangle;

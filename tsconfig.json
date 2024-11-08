@@ -22,5 +22,5 @@
   },
   "include": [
     "src"
-  ]
+, "../Canvas.tsx", "../Circle.tsx", "../DraggableList.tsx", "../Main.tsx", "../MouseMove.tsx", "../MultiSelect.tsx", "../Rectangle.tsx", "../Ruler.tsx", "../RulerCanvas.tsx", "../Sidebar.tsx", "../Star.tsx"  ]
 }

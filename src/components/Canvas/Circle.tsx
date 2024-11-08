@@ -1,17 +1,18 @@
-// src/components/StarShape.tsx
+// src/components/CircleShape.tsx
 
 import React, { useRef, useEffect } from "react";
-import { Star as KonvaStar, Transformer } from "react-konva";
+import { Circle as KonvaCircle, Transformer } from "react-konva";
 import Konva from "konva";
-import { StarProps } from "../types";
+import { CircleProps } from "../../types/types";
 
-const StarShape: React.FC<StarProps> = ({
+const Circle: React.FC<CircleProps> = ({
   shapeProps,
   isSelected,
   onSelect,
   onChange,
+  onDragMove,
 }) => {
-  const shapeRef = useRef<Konva.Star>(null);
+  const shapeRef = useRef<Konva.Circle>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
@@ -22,16 +23,16 @@ const StarShape: React.FC<StarProps> = ({
     }
   }, [isSelected]);
 
-  // Exclude `id` from being passed to <KonvaStar />
-  const { id, ...starProps } = shapeProps;
+  // Exclude `id` from being passed to <KonvaCircle />
+  const { id, ...circleProps } = shapeProps;
 
   return (
     <>
-      <KonvaStar
+      <KonvaCircle
         onClick={onSelect}
         onTap={onSelect}
         ref={shapeRef}
-        {...starProps} // Spread the remaining props without `id`
+        {...circleProps} // Spread the remaining props without `id`
         draggable
         onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
           onChange({
@@ -40,16 +41,15 @@ const StarShape: React.FC<StarProps> = ({
             y: e.target.y(),
           });
         }}
+        onDragMove={onDragMove}
         onTransformEnd={(e: Konva.KonvaEventObject<Event>) => {
           const node = shapeRef.current;
           if (!node) return;
 
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
-          const rotation = node.rotation();
 
-          // For stars, allow non-uniform scaling if desired
-          // Or enforce uniform scaling by taking the maximum or average of scaleX and scaleY
+          // For circles, enforce uniform scaling
           const newScale = Math.max(scaleX, scaleY);
 
           // Reset scale to 1 to maintain consistent sizing
@@ -60,16 +60,14 @@ const StarShape: React.FC<StarProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            innerRadius: Math.max(5, node.innerRadius() * newScale),
-            outerRadius: Math.max(5, node.outerRadius() * newScale),
-            rotation: rotation, // Update rotation
+            radius: Math.max(5, node.radius() * newScale),
           });
         }}
       />
       {isSelected && (
         <Transformer
           ref={trRef}
-          rotateEnabled={true} // Enable rotation for stars
+          rotateEnabled={false} // Circles don't need rotation
           boundBoxFunc={(oldBox, newBox) => {
             // Limit resize to minimum size
             if (newBox.width < 10 || newBox.height < 10) {
@@ -83,4 +81,4 @@ const StarShape: React.FC<StarProps> = ({
   );
 };
 
-export default StarShape;
+export default Circle;

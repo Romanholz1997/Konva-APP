@@ -1,0 +1,43 @@
+/* Main container */
+.container {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  /* Top ruler */
+  .ruler {
+    background-color: #f0f0f0;
+    position: fixed;
+    z-index: 10;
+  }
+  
+  .top-ruler {
+    top: 0;
+    left: 230px;
+    height: 30px;
+    width: calc(100% - 30px);
+  }
+  
+  .left-ruler {
+    top: 30px;
+    left: 200;
+    width: 30px;
+    height: calc(100% - 30px);
+  }
+  
+  /* Canvas container */
+  .canvas-container {
+    padding-top: 30px;
+    padding-left: 30px;
+    width: calc(100vw - 230px);
+    height: calc(100vh - 30px);
+    overflow: auto;
+    position: relative;
+    background-color: #fff;
+    border: 1px solid #ddd;
+  }
+  

@@ -1,17 +1,18 @@
-// src/components/Rectangle.tsx
+// src/components/StarShape.tsx
 
 import React, { useRef, useEffect } from "react";
-import { Rect, Transformer } from "react-konva";
+import { Star as KonvaStar, Transformer } from "react-konva";
 import Konva from "konva";
-import { RectangleProps } from "../types";
+import { StarProps } from "../../types/types";
 
-const Rectangle: React.FC<RectangleProps> = ({
+const Star: React.FC<StarProps> = ({
   shapeProps,
   isSelected,
   onSelect,
   onChange,
+  onDragMove,
 }) => {
-  const shapeRef = useRef<Konva.Rect>(null);
+  const shapeRef = useRef<Konva.Star>(null);
   const trRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
@@ -22,16 +23,16 @@ const Rectangle: React.FC<RectangleProps> = ({
     }
   }, [isSelected]);
 
-  // Exclude `id` from being passed to <Rect />
-  const { id, ...rectProps } = shapeProps;
+  // Exclude `id` from being passed to <KonvaStar />
+  const { id, ...starProps } = shapeProps;
 
   return (
     <>
-      <Rect
+      <KonvaStar
         onClick={onSelect}
         onTap={onSelect}
         ref={shapeRef}
-        {...rectProps} // Spread the remaining props without `id`
+        {...starProps} // Spread the remaining props without `id`
         draggable
         onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
           onChange({
@@ -40,6 +41,7 @@ const Rectangle: React.FC<RectangleProps> = ({
             y: e.target.y(),
           });
         }}
+        onDragMove={onDragMove}
         onTransformEnd={(e: Konva.KonvaEventObject<Event>) => {
           const node = shapeRef.current;
           if (!node) return;
@@ -47,6 +49,11 @@ const Rectangle: React.FC<RectangleProps> = ({
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
           const rotation = node.rotation();
+
+          // For stars, allow non-uniform scaling if desired
+          // Or enforce uniform scaling by taking the maximum or average of scaleX and scaleY
+          const newScale = Math.max(scaleX, scaleY);
+
           // Reset scale to 1 to maintain consistent sizing
           node.scaleX(1);
           node.scaleY(1);
@@ -55,19 +62,19 @@ const Rectangle: React.FC<RectangleProps> = ({
             ...shapeProps,
             x: node.x(),
             y: node.y(),
-            width: Math.max(5, node.width() * scaleX),
-            height: Math.max(5, node.height() * scaleY),
-            rotation: rotation,
+            innerRadius: Math.max(5, node.innerRadius() * newScale),
+            outerRadius: Math.max(5, node.outerRadius() * newScale),
+            rotation: rotation, // Update rotation
           });
         }}
       />
       {isSelected && (
         <Transformer
           ref={trRef}
-          rotateEnabled={true} // Rectangles might not need rotation
+          rotateEnabled={true} // Enable rotation for stars
           boundBoxFunc={(oldBox, newBox) => {
             // Limit resize to minimum size
-            if (newBox.width < 5 || newBox.height < 5) {
+            if (newBox.width < 10 || newBox.height < 10) {
               return oldBox;
             }
             return newBox;
@@ -78,4 +85,4 @@ const Rectangle: React.FC<RectangleProps> = ({
   );
 };
 
-export default Rectangle;
+export default Star;

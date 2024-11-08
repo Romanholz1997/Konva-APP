@@ -39,6 +39,7 @@ export interface RectangleProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: RectangleAttrs) => void;
+  onDragMove: (handleDragMove) => void;
 }
 
 export interface CircleProps {
@@ -46,6 +47,7 @@ export interface CircleProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: CircleAttrs) => void;
+  onDragMove: (handleDragMove) => void;
 }
 
 export interface StarProps {
@@ -53,4 +55,5 @@ export interface StarProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newAttrs: StarAttrs) => void;
+  onDragMove: (handleDragMove) => void;
 }

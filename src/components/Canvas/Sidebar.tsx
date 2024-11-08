@@ -1,7 +1,4 @@
-// src/Sidebar.tsx
 import React from "react";
-// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-// import { faSquare, faCircle } from "@fortawesome/free-solid-svg-icons";
 
 interface SidebarProps {
   onDragStart: (
@@ -19,16 +16,6 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   shapeType,
   onDragStart,
 }) => {
-  // const getIcon = (type: string) => {
-  //   switch (type) {
-  //     case "rectangle":
-  //       return <FontAwesomeIcon icon={faSquare} color="blue" />;
-  //     case "circle":
-  //       return <FontAwesomeIcon icon={faCircle} color="blue" />;
-  //     default:
-  //       return null;
-  //   }
-  // };
   return (
     <div
       draggable
@@ -41,7 +28,6 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
         alignItems: "center",
       }}
     >
-      {/* {getIcon(shapeType)} */}
       {shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}{" "}
     </div>
   );
@@ -49,12 +35,11 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
 
 const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
   return (
-    <div style={{ width: "200px", border: "1px solid black", padding: "10px" }}>
+    <div style={{ width: "200px", border: "1px solid #bbb", padding: "10px" }}>
       <DraggableItem shapeType="rectangle" onDragStart={onDragStart} />
       <DraggableItem shapeType="circle" onDragStart={onDragStart} />
       <DraggableItem shapeType="star" onDragStart={onDragStart} />
       <DraggableItem shapeType="Ellipse" onDragStart={onDragStart} />
-      {/* <DraggableItem shapeType="circle" onDragStart={onDragStart} /> */}
     </div>
   );
 };
