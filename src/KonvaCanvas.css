@@ -1,0 +1,10 @@
+.selected {
+    stroke: black;
+    stroke-width: 2px;
+  }
+  .container {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+  

@@ -3,7 +3,7 @@
 export type Shape = RectangleAttrs | CircleAttrs | StarAttrs;
 
 export interface RectangleAttrs {
-  id: number;
+  id: string;
   type: "rectangle";
   x: number;
   y: number;
@@ -14,16 +14,17 @@ export interface RectangleAttrs {
 }
 
 export interface CircleAttrs {
-  id: number;
+  id: string;
   type: "circle";
   x: number;
   y: number;
   radius: number;
   fill: string;
+  rotation: number;
 }
 
 export interface StarAttrs {
-  id: number;
+  id: string;
   type: "star";
   x: number;
   y: number;

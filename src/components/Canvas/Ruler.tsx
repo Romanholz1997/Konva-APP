@@ -1,6 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
+import React from "react";
 import { Stage, Layer, Text, Line } from "react-konva";
-import Konva from "konva";
 import "./custom.css";
 
 const RULER_SIZE = 30;

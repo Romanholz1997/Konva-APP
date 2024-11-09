@@ -1,86 +1,45 @@
-// src/components/StarShape.tsx
-
-import React, { useRef, useEffect } from "react";
-import { Star as KonvaStar, Transformer } from "react-konva";
+import React from "react";
+import { Star as KonvaStar } from "react-konva";
 import Konva from "konva";
-import { StarProps } from "../../types/types";
-
-const Star: React.FC<StarProps> = ({
-  shapeProps,
-  isSelected,
-  onSelect,
-  onChange,
-  onDragMove,
+interface CustomStarProps {
+  id: string;
+  x: number;
+  y: number;
+  numPoints: number;
+  innerRadius: number;
+  outerRadius: number;
+  fill: string;
+  rotation: number;
+  onShapeClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
+  onDragEnd: (e: Konva.KonvaEventObject<DragEvent>, id: string) => void;
+}
+const Star: React.FC<CustomStarProps> = ({
+  id,
+  x,
+  y,
+  numPoints,
+  innerRadius,
+  outerRadius,
+  fill,
+  rotation,
+  onShapeClick,
+  onDragEnd,
 }) => {
-  const shapeRef = useRef<Konva.Star>(null);
-  const trRef = useRef<Konva.Transformer>(null);
-
-  useEffect(() => {
-    if (isSelected && trRef.current && shapeRef.current) {
-      // Attach the transformer to the selected shape
-      trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer()?.batchDraw();
-    }
-  }, [isSelected]);
-
-  // Exclude `id` from being passed to <KonvaStar />
-  const { id, ...starProps } = shapeProps;
-
   return (
     <>
       <KonvaStar
-        onClick={onSelect}
-        onTap={onSelect}
-        ref={shapeRef}
-        {...starProps} // Spread the remaining props without `id`
+        id={id}
+        x={x}
+        y={y}
+        numPoints={numPoints}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius}
+        fill={fill}
+        rotation={rotation}
         draggable
-        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-          onChange({
-            ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
-          });
-        }}
-        onDragMove={onDragMove}
-        onTransformEnd={(e: Konva.KonvaEventObject<Event>) => {
-          const node = shapeRef.current;
-          if (!node) return;
-
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
-          const rotation = node.rotation();
-
-          // For stars, allow non-uniform scaling if desired
-          // Or enforce uniform scaling by taking the maximum or average of scaleX and scaleY
-          const newScale = Math.max(scaleX, scaleY);
-
-          // Reset scale to 1 to maintain consistent sizing
-          node.scaleX(1);
-          node.scaleY(1);
-
-          onChange({
-            ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            innerRadius: Math.max(5, node.innerRadius() * newScale),
-            outerRadius: Math.max(5, node.outerRadius() * newScale),
-            rotation: rotation, // Update rotation
-          });
-        }}
+        onClick={(e) => onShapeClick(e, id)}
+        onDragEnd={(e) => onDragEnd(e, id)}
       />
-      {isSelected && (
-        <Transformer
-          ref={trRef}
-          rotateEnabled={true} // Enable rotation for stars
-          boundBoxFunc={(oldBox, newBox) => {
-            // Limit resize to minimum size
-            if (newBox.width < 10 || newBox.height < 10) {
-              return oldBox;
-            }
-            return newBox;
-          }}
-        />
-      )}
     </>
   );
 };

@@ -1,0 +1,15 @@
+/* src/App.css */
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #f0f0f0;
+}
+
+.selected {
+  /* Optional: Add styles for selected shapes if desired */
+  /* For example, change the stroke or add a shadow */
+  /* stroke: blue; */
+  /* strokeWidth: 2; */
+}

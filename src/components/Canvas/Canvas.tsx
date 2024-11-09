@@ -1,66 +1,249 @@
-// src/Main.tsx
-
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { Stage, Layer, Rect, Text, Line } from "react-konva";
+import {
+  Stage,
+  Layer,
+  Rect,
+  Image as KonvaImage,
+  Transformer,
+  Text,
+  Line,
+} from "react-konva";
 import Konva from "konva";
 import Ruler from "./Ruler";
 import {
   Shape,
   RectangleAttrs,
-  CircleAttrs,
   StarAttrs,
+  CircleAttrs,
 } from "../../types/types";
 import Rectangle from "./Rectangle";
 import Circle from "./Circle";
 import Star from "./Star";
-import "./custom.css";
 
 const CANVAS_WIDTH = 4000;
 const CANVAS_HEIGHT = 4000;
 const Canvas: React.FC = () => {
-  // State for shapes
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [nextId, setNextId] = useState<number>(1);
-  const [mouseMessage, setMouseMessage] = useState<string>("");
-  const [selectedId, selectShape] = useState<number | null>(null);
-  const [scrollOffsetX, setScrollOffsetX] = useState(0);
-  const [scrollOffsetY, setScrollOffsetY] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const [isSelecting, setIsSelecting] = useState(false);
-  const stageRef = useRef<Konva.Stage>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionRect, setSelectionRect] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
 
   const [mouseCoords, setMouseCoords] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,
   });
+  const stageRef = useRef<Konva.Stage>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const transformerRef = useRef<Konva.Transformer>(null);
+  const layerRef = useRef<Konva.Layer>(null);
+  const [scrollOffsetX, setScrollOffsetX] = useState(0);
+  const [scrollOffsetY, setScrollOffsetY] = useState(0);
+
   const [showMouseInfo, setShowMouseInfo] = useState(false);
-  // Handle scrolling and update ruler offsets
+  const [mouseMessage, setMouseMessage] = useState<string>("");
+
+  const [backgroundImage, setBackgroundImage] =
+    useState<HTMLImageElement | null>(null);
+
+  // Load the background image
+  useEffect(() => {
+    const imagePath = "./background.svg"; // Replace with your SVG path
+    loadBackgroundImage(imagePath);
+  }, []);
+
+  const loadBackgroundImage = (src: string) => {
+    const img = new window.Image();
+    img.src = src;
+    img.onload = () => {
+      setBackgroundImage(img);
+    };
+    img.onerror = (err) => {
+      console.error("Failed to load background image:", err);
+    };
+  };
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    // Deselect shapes if clicked on empty area
+    if (e.target === stageRef.current) {
+      setSelectedIds([]);
+      const pos = stageRef.current?.getPointerPosition();
+      if (pos) {
+        setSelectionRect({
+          visible: true,
+          x: pos.x,
+          y: pos.y,
+          width: 0,
+          height: 0,
+        });
+        setIsSelecting(true);
+      }
+      if (e.evt.ctrlKey) {
+        setMouseMessage(`Ctrl clicked in the free area`);
+      } else {
+        setMouseMessage("You clicked in the free area");
+        // selectShape(null);
+      }
+    }
+  };
   const handleScroll = () => {
     if (canvasRef.current) {
       setScrollOffsetX(canvasRef.current.scrollLeft);
       setScrollOffsetY(canvasRef.current.scrollTop);
     }
   };
-  const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
-    const shape = e.target;
-    const stage = stageRef.current;
-    if (!stage) return;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener("scroll", handleScroll);
+      return () => {
+        canvas.removeEventListener("scroll", handleScroll);
+      };
+    }
+  }, []);
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    e.evt.preventDefault();
 
-    const canvasWidth = stage.width();
-    const canvasHeight = stage.height();
+    const pos = stageRef.current?.getPointerPosition();
+    if (pos) {
+      setMouseCoords({ x: pos.x, y: pos.y });
+      if (e.target === stageRef.current) {
+        setShowMouseInfo(true);
+        setMouseMessage(`Mouse move in free area`);
+      } else {
+        setShowMouseInfo(false);
+      }
+      if (!isSelecting) {
+        return;
+      }
+    }
 
-    // Ensure shapes stay within canvas boundaries
-    const newX = Math.max(0, Math.min(shape.x(), canvasWidth - shape.width()));
-    const newY = Math.max(
-      0,
-      Math.min(shape.y(), canvasHeight - shape.height())
-    );
-
-    shape.x(newX);
-    shape.y(newY);
+    if (pos && selectionRect.visible) {
+      const x = Math.min(pos.x, selectionRect.x);
+      const y = Math.min(pos.y, selectionRect.y);
+      const width = Math.abs(pos.x - selectionRect.x);
+      const height = Math.abs(pos.y - selectionRect.y);
+      setSelectionRect({
+        ...selectionRect,
+        x,
+        y,
+        width,
+        height,
+      });
+    }
   };
-  // Handle drop event to add new shapes
+
+  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (isSelecting) {
+      setIsSelecting(false);
+      setSelectionRect({
+        ...selectionRect,
+        visible: false,
+      });
+
+      const selBox = selectionRect;
+      const selected = shapes.filter((shape) => {
+        const shapeNode = layerRef.current?.findOne<Konva.Rect>(`#${shape.id}`);
+        if (shapeNode) {
+          return Konva.Util.haveIntersection(selBox, shapeNode.getClientRect());
+        }
+        return false;
+      });
+
+      setSelectedIds(selected.map((shape) => shape.id));
+    }
+  };
+
+  useEffect(() => {
+    const transformer = transformerRef.current;
+    if (transformer) {
+      const nodes = selectedIds
+        .map((id) => layerRef.current?.findOne<Konva.Rect>(`#${id}`))
+        .filter(Boolean) as Konva.Node[];
+      transformer.nodes(nodes);
+      transformer.getLayer()?.batchDraw();
+    }
+  }, [selectedIds]);
+
+  const handleShapeClick = (
+    e: Konva.KonvaEventObject<MouseEvent>,
+    id: string
+  ) => {
+    e.cancelBubble = true;
+
+    const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+    const isSelected = selectedIds.includes(id);
+
+    if (!metaPressed && !isSelected) {
+      setSelectedIds([id]);
+    } else if (metaPressed && isSelected) {
+      setSelectedIds(selectedIds.filter((_id) => _id !== id));
+    } else if (metaPressed && !isSelected) {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleTransformEnd = () => {
+    const transformer = transformerRef.current;
+    if (!transformer) return;
+
+    const transformedNodes = transformer.nodes();
+
+    const newShapes = shapes.map((shape) => {
+      const node = transformedNodes.find((n) => n.id() === String(shape.id));
+      if (node) {
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        const rotation = node.rotation();
+
+        // Reset scale to 1
+        node.scaleX(1);
+        node.scaleY(1);
+
+        if (shape.type === "rectangle") {
+          return {
+            ...shape,
+            x: node.x(),
+            y: node.y(),
+            rotation,
+            width: Math.max(5, node.width() * scaleX),
+            height: Math.max(5, node.height() * scaleY),
+          };
+        } else if (shape.type === "circle") {
+          const avgScale = (scaleX + scaleY) / 2;
+          return {
+            ...shape,
+            x: node.x(),
+            y: node.y(),
+            rotation,
+            radius: Math.max(5, shape.radius * avgScale),
+          };
+        } else if (shape.type === "star") {
+          const avgScale = (scaleX + scaleY) / 2;
+          return {
+            ...shape,
+            x: node.x(),
+            y: node.y(),
+            rotation,
+            innerRadius: Math.max(5, shape.innerRadius * avgScale),
+            outerRadius: Math.max(5, shape.outerRadius * avgScale),
+          };
+        } else {
+          return shape;
+        }
+      } else {
+        return shape;
+      }
+    });
+
+    setShapes(newShapes);
+  };
+
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -111,7 +294,7 @@ const Canvas: React.FC = () => {
         switch (shapeType) {
           case "rectangle":
             newShape = {
-              id: nextId,
+              id: "rectangle_" + nextId,
               type: "rectangle",
               x: x,
               y: y,
@@ -123,17 +306,18 @@ const Canvas: React.FC = () => {
             break;
           case "circle":
             newShape = {
-              id: nextId,
+              id: "circle_" + nextId,
               type: "circle",
               x: x,
               y: y,
               radius: 50,
               fill: "red",
+              rotation: 0,
             };
             break;
           case "star":
             newShape = {
-              id: nextId,
+              id: "star_" + nextId,
               type: "star",
               x: x,
               y: y,
@@ -154,69 +338,66 @@ const Canvas: React.FC = () => {
     },
     [shapes, nextId]
   );
-
-  // Prevent default behavior for drag over
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
-
-  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const pointerPos = stageRef.current?.getPointerPosition();
-    if (pointerPos) {
-      setMouseCoords({ x: pointerPos.x, y: pointerPos.y });
-
-      // Only show mouse information if the cursor is in the free area
-      if (e.target === stageRef.current) {
-        setShowMouseInfo(true);
-        setMouseMessage(`Mouse move in free area`);
-      } else {
-        setShowMouseInfo(false);
+  const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
+    const newShapes = shapes.map((shape) => {
+      if (shape.id === id) {
+        return {
+          ...shape,
+          x: e.target.x(),
+          y: e.target.y(),
+        };
       }
-    }
+      return shape;
+    });
+    setShapes(newShapes);
   };
-  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (e.target === stageRef.current) {
-      if (e.evt.ctrlKey) {
-        setMouseMessage(`Ctrl clicked in the free area`);
-      } else {
-        setIsSelecting(true);
-        setMouseMessage("You clicked in the free area");
-        selectShape(null);
-      }
-    }
-  };
-  useEffect(() => {
-    if (selectedId !== null) {
-      setMouseMessage(`Shape ${selectedId} selected`);
-    }
-  }, [selectedId]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.addEventListener("scroll", handleScroll);
-      return () => {
-        canvas.removeEventListener("scroll", handleScroll);
-      };
-    }
-  }, []);
-
   const handleTopRulerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
     if (canvasRef.current) {
       // Scroll horizontally based on wheel delta
       canvasRef.current.scrollLeft += e.deltaY;
     }
   };
-
-  // Handle wheel events on the left ruler (vertical scrolling)
   const handleLeftRulerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
     if (canvasRef.current) {
       // Scroll vertically based on wheel delta
       canvasRef.current.scrollTop += e.deltaY;
     }
   };
+  const deleteSelectedShapes = () => {
+    if (selectedIds.length > 0) {
+      // Filter out the selected shapes
+      const newShapes = shapes.filter(
+        (shape) => !selectedIds.includes(shape.id)
+      );
+
+      // Update the shapes state
+      setShapes(newShapes);
+
+      // Clear the selectedIds
+      setSelectedIds([]);
+    }
+  };
+
+  // Add a useEffect hook to handle keydown events
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        // Call the function to delete selected shapes
+        deleteSelectedShapes();
+      }
+    };
+
+    // Add event listener to the window object
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedIds, shapes]);
 
   return (
     <div className="container">
@@ -233,52 +414,47 @@ const Canvas: React.FC = () => {
         ref={canvasRef}
       >
         <Stage
-          ref={stageRef}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          onMouseMove={handleMouseMove}
+          ref={stageRef}
           onMouseDown={handleMouseDown}
-          draggable
-          onDragStart={() => setDragging(true)}
-          onDragEnd={() => setDragging(false)}
-          onDragMove={(e) => {
-            if (dragging && stageRef.current) {
-              const stage = stageRef.current;
-              const newPos = stage.position();
-              // Constrain the panning within the canvas area
-              stage.position({
-                x: Math.max(
-                  Math.min(newPos.x, 0),
-                  -(CANVAS_WIDTH - stage.width())
-                ),
-                y: Math.max(
-                  Math.min(newPos.y, 0),
-                  -(CANVAS_HEIGHT - stage.height())
-                ),
-              });
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+            if (e.key === "Delete" || e.key === "Backspace") {
+              deleteSelectedShapes();
             }
           }}
         >
           <Layer>
+            {backgroundImage && (
+              <KonvaImage
+                image={backgroundImage}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                x={0}
+                y={0}
+                listening={false}
+              />
+            )}
+          </Layer>
+          <Layer ref={layerRef}>
             {shapes.map((shape) => {
               if (shape.type === "rectangle") {
                 const rect = shape as RectangleAttrs;
-
                 return (
                   <Rectangle
                     key={rect.id}
-                    shapeProps={rect}
-                    isSelected={rect.id === selectedId}
-                    onSelect={() => {
-                      selectShape(rect.id);
-                    }}
-                    onChange={(newAttrs: RectangleAttrs) => {
-                      const updatedShapes = shapes.map((s) =>
-                        s.id === rect.id ? { ...s, ...newAttrs } : s
-                      );
-                      setShapes(updatedShapes);
-                    }}
-                    onDragMove={handleDragMove}
+                    id={rect.id}
+                    x={rect.x}
+                    y={rect.y}
+                    width={rect.width}
+                    height={rect.height}
+                    fill={rect.fill}
+                    rotation={rect.rotation}
+                    onShapeClick={(e) => handleShapeClick(e, rect.id)}
+                    // Remove onTransformEnd from individual shapes
+                    onDragEnd={(e) => handleDragEnd(e, rect.id)}
                   />
                 );
               } else if (shape.type === "circle") {
@@ -287,18 +463,15 @@ const Canvas: React.FC = () => {
                 return (
                   <Circle
                     key={circle.id}
-                    shapeProps={circle}
-                    isSelected={circle.id === selectedId}
-                    onSelect={() => {
-                      selectShape(circle.id);
-                    }}
-                    onChange={(newAttrs: CircleAttrs) => {
-                      const updatedShapes = shapes.map((s) =>
-                        s.id === circle.id ? { ...s, ...newAttrs } : s
-                      );
-                      setShapes(updatedShapes);
-                    }}
-                    onDragMove={handleDragMove}
+                    id={circle.id}
+                    x={circle.x}
+                    y={circle.y}
+                    radius={circle.radius}
+                    fill={circle.fill}
+                    rotation={circle.rotation}
+                    onShapeClick={(e) => handleShapeClick(e, circle.id)}
+                    // Remove onTransformEnd from individual shapes
+                    onDragEnd={(e) => handleDragEnd(e, circle.id)}
                   />
                 );
               } else if (shape.type === "star") {
@@ -307,23 +480,51 @@ const Canvas: React.FC = () => {
                 return (
                   <Star
                     key={star.id}
-                    shapeProps={star}
-                    isSelected={star.id === selectedId}
-                    onSelect={() => {
-                      selectShape(star.id);
-                    }}
-                    onChange={(newAttrs: StarAttrs) => {
-                      const updatedShapes = shapes.map((s) =>
-                        s.id === star.id ? { ...s, ...newAttrs } : s
-                      );
-                      setShapes(updatedShapes);
-                    }}
-                    onDragMove={handleDragMove}
+                    id={star.id}
+                    x={star.x}
+                    y={star.y}
+                    numPoints={star.numPoints}
+                    innerRadius={star.innerRadius}
+                    outerRadius={star.outerRadius}
+                    fill={star.fill}
+                    rotation={star.rotation}
+                    onShapeClick={(e) => handleShapeClick(e, star.id)}
+                    // Remove onTransformEnd from individual shapes
+                    onDragEnd={(e) => handleDragEnd(e, star.id)}
                   />
                 );
               }
               return null;
             })}
+
+            {/* Transformer */}
+            <Transformer
+              ref={transformerRef}
+              rotateEnabled={true}
+              enabledAnchors={[
+                "top-left",
+                "top-right",
+                "bottom-left",
+                "bottom-right",
+                "middle-left",
+                "middle-right",
+                "top-center",
+                "bottom-center",
+              ]}
+              onTransformEnd={handleTransformEnd} // Attach handler here
+            />
+
+            {/* Selection Rectangle */}
+            {selectionRect.visible && (
+              <Rect
+                x={selectionRect.x}
+                y={selectionRect.y}
+                width={selectionRect.width}
+                height={selectionRect.height}
+                fill="rgba(0, 0, 255, 0.2)"
+                listening={false}
+              />
+            )}
             {showMouseInfo && (
               <>
                 {/* Display Mouse Coordinates */}
@@ -350,7 +551,6 @@ const Canvas: React.FC = () => {
           </Layer>
         </Stage>
       </div>
-      {/* Message Display */}
       <div
         style={{
           position: "absolute",
@@ -365,7 +565,6 @@ const Canvas: React.FC = () => {
         }}
       >
         {showMouseInfo && <p>{mouseMessage}</p>}
-        {selectedId && !showMouseInfo && <p>{mouseMessage}</p>}
       </div>
     </div>
   );
