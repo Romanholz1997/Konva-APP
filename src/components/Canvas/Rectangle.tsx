@@ -12,6 +12,7 @@ interface CustomRectProps {
   rotation: number;
   onShapeClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>, id: string) => void;
+  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
 }
 
 const Rectangle: React.FC<CustomRectProps> = ({
@@ -24,6 +25,7 @@ const Rectangle: React.FC<CustomRectProps> = ({
   rotation,
   onShapeClick,
   onDragEnd,
+  dragBoundFunc,
 }) => {
   return (
     <Rect
@@ -37,6 +39,7 @@ const Rectangle: React.FC<CustomRectProps> = ({
       draggable
       onClick={(e) => onShapeClick(e, id)}
       onDragEnd={(e) => onDragEnd(e, id)}
+      dragBoundFunc={dragBoundFunc}
     />
   );
 };

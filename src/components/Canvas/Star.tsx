@@ -12,6 +12,7 @@ interface CustomStarProps {
   rotation: number;
   onShapeClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>, id: string) => void;
+  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
 }
 const Star: React.FC<CustomStarProps> = ({
   id,
@@ -24,6 +25,7 @@ const Star: React.FC<CustomStarProps> = ({
   rotation,
   onShapeClick,
   onDragEnd,
+  dragBoundFunc,
 }) => {
   return (
     <>
@@ -39,6 +41,7 @@ const Star: React.FC<CustomStarProps> = ({
         draggable
         onClick={(e) => onShapeClick(e, id)}
         onDragEnd={(e) => onDragEnd(e, id)}
+        dragBoundFunc={dragBoundFunc}
       />
     </>
   );

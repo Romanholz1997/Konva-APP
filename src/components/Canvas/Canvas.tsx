@@ -9,6 +9,9 @@ import {
   Line,
 } from "react-konva";
 import Konva from "konva";
+import { KonvaEventObject } from "konva/lib/Node";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Ruler from "./Ruler";
 import {
   Shape,
@@ -40,14 +43,23 @@ const Canvas: React.FC = () => {
   });
   const stageRef = useRef<Konva.Stage>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
   const transformerRef = useRef<Konva.Transformer>(null);
   const layerRef = useRef<Konva.Layer>(null);
+
+  const [isSelecting, setIsSelecting] = useState(false);
+
   const [scrollOffsetX, setScrollOffsetX] = useState(0);
   const [scrollOffsetY, setScrollOffsetY] = useState(0);
 
   const [showMouseInfo, setShowMouseInfo] = useState(false);
-  const [mouseMessage, setMouseMessage] = useState<string>("");
+
+  const [isPanning, setIsPanning] = useState(false);
+  const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+  const [stageScale, setStageScale] = useState<number>(1);
+  const [lastPos, setLastPos] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
 
   const [backgroundImage, setBackgroundImage] =
     useState<HTMLImageElement | null>(null);
@@ -68,29 +80,37 @@ const Canvas: React.FC = () => {
       console.error("Failed to load background image:", err);
     };
   };
-  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    // Deselect shapes if clicked on empty area
-    if (e.target === stageRef.current) {
-      setSelectedIds([]);
-      const pos = stageRef.current?.getPointerPosition();
-      if (pos) {
-        setSelectionRect({
-          visible: true,
-          x: pos.x,
-          y: pos.y,
-          width: 0,
-          height: 0,
-        });
-        setIsSelecting(true);
-      }
-      if (e.evt.ctrlKey) {
-        setMouseMessage(`Ctrl clicked in the free area`);
-      } else {
-        setMouseMessage("You clicked in the free area");
-        // selectShape(null);
-      }
-    }
+
+  const handleWheel = (e: KonvaEventObject<WheelEvent>): void => {
+    e.evt.preventDefault();
+
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const oldScale = stageScale;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const scaleBy = 1.02;
+    const newScale = e.evt.deltaY > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+
+    const mousePointTo = {
+      x: (pointer.x - stagePos.x) / oldScale,
+      y: (pointer.y - stagePos.y) / oldScale,
+    };
+
+    const newPos = {
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+    };
+
+    setStageScale(newScale);
+    setStagePos(newPos);
   };
+  const handleContextMenu = (e: KonvaEventObject<PointerEvent>) => {
+    e.evt.preventDefault();
+  };
+
   const handleScroll = () => {
     if (canvasRef.current) {
       setScrollOffsetX(canvasRef.current.scrollLeft);
@@ -106,17 +126,59 @@ const Canvas: React.FC = () => {
       };
     }
   }, []);
+
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    // Deselect shapes if clicked on empty area
+    if (e.target === stageRef.current) {
+      if (e.evt.button === 2) {
+        e.evt.preventDefault(); // Prevent the context menu from appearing
+        setIsPanning(true);
+        const pointerPos = stageRef.current?.getPointerPosition();
+        if (pointerPos) {
+          setLastPos({
+            x: (pointerPos.x - stagePos.x) / stageScale,
+            y: (pointerPos.y - stagePos.y) / stageScale,
+          });
+        }
+      } else {
+        setSelectedIds([]);
+        const pos = stageRef.current?.getPointerPosition();
+        if (pos) {
+          setSelectionRect({
+            visible: true,
+            x: pos.x,
+            y: pos.y,
+            width: 0,
+            height: 0,
+          });
+          setIsSelecting(true);
+        }
+      }
+    }
+  };
+
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.evt.preventDefault();
-
+    if (isPanning) {
+      const pointerPos = stageRef.current?.getPointerPosition();
+      if (pointerPos) {
+        const newPos = {
+          x: pointerPos.x - lastPos.x * stageScale,
+          y: pointerPos.y - lastPos.y * stageScale,
+        };
+        setStagePos(newPos);
+      }
+    }
     const pos = stageRef.current?.getPointerPosition();
     if (pos) {
       setMouseCoords({ x: pos.x, y: pos.y });
       if (e.target === stageRef.current) {
         setShowMouseInfo(true);
-        setMouseMessage(`Mouse move in free area`);
       } else {
         setShowMouseInfo(false);
+      }
+      if (!isSelecting) {
+        return;
       }
       if (!isSelecting) {
         return;
@@ -139,6 +201,9 @@ const Canvas: React.FC = () => {
   };
 
   const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (isPanning) {
+      setIsPanning(false);
+    }
     if (isSelecting) {
       setIsSelecting(false);
       setSelectionRect({
@@ -183,8 +248,26 @@ const Canvas: React.FC = () => {
       setSelectedIds([id]);
     } else if (metaPressed && isSelected) {
       setSelectedIds(selectedIds.filter((_id) => _id !== id));
+      toast("Ctrl clicked", {
+        position: "top-right",
+        autoClose: 1000, // Change this value to adjust the display duration
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "light",
+      });
     } else if (metaPressed && !isSelected) {
       setSelectedIds([...selectedIds, id]);
+      toast("Ctrl clicked", {
+        position: "top-right",
+        autoClose: 1000, // Change this value to adjust the display duration
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "light",
+      });
     }
   };
 
@@ -243,104 +326,151 @@ const Canvas: React.FC = () => {
 
     setShapes(newShapes);
   };
+  const isPointInRotatedRect = (
+    px: number,
+    py: number,
+    rect: RectangleAttrs
+  ): boolean => {
+    const { x, y, width, height, rotation } = rect;
 
+    // Translate point to rectangle's local coordinate system
+    const translatedX = px - x;
+    const translatedY = py - y;
+
+    // Convert rotation to radians and negate for inverse rotation
+    const theta = -rotation * (Math.PI / 180);
+
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+
+    // Rotate the point
+    const localX = translatedX * cos - translatedY * sin;
+    const localY = translatedX * sin + translatedY * cos;
+
+    // Check if the point is within the unrotated rectangle
+    return localX >= 0 && localX <= width && localY >= 0 && localY <= height;
+  };
+  const isOverlapping = (x: number, y: number): boolean => {
+    return shapes.some((shape) => {
+      if (shape.type === "rectangle") {
+        const rect = shape as RectangleAttrs;
+        return isPointInRotatedRect(x, y, rect);
+      } else if (shape.type === "circle") {
+        const circle = shape as CircleAttrs;
+        const dx = x - circle.x;
+        const dy = y - circle.y;
+        return Math.sqrt(dx * dx + dy * dy) <= circle.radius;
+      } else if (shape.type === "star") {
+        const star = shape as StarAttrs;
+        return (
+          x >= star.x - star.outerRadius &&
+          x <= star.x + star.outerRadius &&
+          y >= star.y - star.outerRadius &&
+          y <= star.y + star.outerRadius
+        );
+      }
+      // Add checks for other shape types if necessary
+      return false;
+    });
+  };
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
 
       const target = e.target as HTMLElement;
-      const stageElement = target.closest(".konvajs-content");
+      const stageElement = target.closest(
+        ".konvajs-content"
+      ) as HTMLElement | null;
 
-      if (!stageElement) return;
+      if (!stageElement || !stageRef.current) return;
 
       const stageRect = stageElement.getBoundingClientRect();
-      const x = e.clientX - stageRect.left;
-      const y = e.clientY - stageRect.top;
+
+      const pointer = {
+        x: (e.clientX - stageRect.left - stagePos.x) / stageScale,
+        y: (e.clientY - stageRect.top - stagePos.y) / stageScale,
+      };
+
+      const overlapping = isOverlapping(pointer.x, pointer.y);
+
+      if (overlapping) {
+        // Optionally, provide feedback to the user
+        alert("Cannot place the shape over an existing one.");
+        return;
+      }
 
       const shapeType = e.dataTransfer.getData("text/plain") as
         | "rectangle"
         | "circle"
         | "star";
 
-      // Check for overlap with existing shapes
-      const overlap = shapes.some((shape) => {
-        switch (shape.type) {
-          case "rectangle":
-            return (
-              x >= shape.x - shape.width / 2 &&
-              x <= shape.x + shape.width / 2 &&
-              y >= shape.y - shape.height / 2 &&
-              y <= shape.y + shape.height / 2
-            );
-          case "circle":
-            const dx = x - shape.x;
-            const dy = y - shape.y;
-            return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
-          case "star":
-            // Simple bounding box check for star
-            return (
-              x >= shape.x - shape.outerRadius &&
-              x <= shape.x + shape.outerRadius &&
-              y >= shape.y - shape.outerRadius &&
-              y <= shape.y + shape.outerRadius
-            );
-          default:
-            return false;
-        }
-      });
-
-      if (!overlap) {
-        let newShape: Shape;
-        switch (shapeType) {
-          case "rectangle":
-            newShape = {
-              id: "rectangle_" + nextId,
-              type: "rectangle",
-              x: x,
-              y: y,
-              width: 100,
-              height: 100,
-              fill: "blue",
-              rotation: 0,
-            };
-            break;
-          case "circle":
-            newShape = {
-              id: "circle_" + nextId,
-              type: "circle",
-              x: x,
-              y: y,
-              radius: 50,
-              fill: "red",
-              rotation: 0,
-            };
-            break;
-          case "star":
-            newShape = {
-              id: "star_" + nextId,
-              type: "star",
-              x: x,
-              y: y,
-              numPoints: 5,
-              innerRadius: 20,
-              outerRadius: 40,
-              fill: "green",
-              rotation: 0, // Initialize rotation
-            };
-            break;
-          default:
-            return;
-        }
-
-        setShapes([...shapes, newShape]);
-        setNextId(nextId + 1);
+      let newShape: Shape;
+      switch (shapeType) {
+        case "rectangle":
+          newShape = {
+            id: "rectangle_" + nextId,
+            type: "rectangle",
+            x: pointer.x - 50,
+            y: pointer.y - 50,
+            width: 100,
+            height: 100,
+            fill: "blue",
+            rotation: 0,
+          };
+          break;
+        case "circle":
+          newShape = {
+            id: "circle_" + nextId,
+            type: "circle",
+            x: pointer.x,
+            y: pointer.y,
+            radius: 50,
+            fill: "red",
+            rotation: 0,
+          };
+          break;
+        case "star":
+          newShape = {
+            id: "star_" + nextId,
+            type: "star",
+            x: pointer.x,
+            y: pointer.y,
+            numPoints: 5,
+            innerRadius: 30,
+            outerRadius: 50,
+            fill: "green",
+            rotation: 0, // Initialize rotation
+          };
+          break;
+        default:
+          return;
       }
+
+      setShapes([...shapes, newShape]);
+      setNextId(nextId + 1);
     },
-    [shapes, nextId]
+    [shapes, nextId, stagePos, stageScale]
   );
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+
+    if (!stageRef.current) return;
+
+    const stage = stageRef.current;
+    const container = stage.container();
+    const stageRect = container.getBoundingClientRect();
+
+    const pointer = {
+      x: (e.clientX - stageRect.left - stagePos.x) / stageScale,
+      y: (e.clientY - stageRect.top - stagePos.y) / stageScale,
+    };
+
+    const overlapping = isOverlapping(pointer.x, pointer.y);
+
+    // Set the dropEffect based on overlap
+    e.dataTransfer.dropEffect = overlapping ? "none" : "copy";
   };
+
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
     const newShapes = shapes.map((shape) => {
       if (shape.id === id) {
@@ -354,6 +484,9 @@ const Canvas: React.FC = () => {
     });
     setShapes(newShapes);
   };
+
+  ////
+  //--------------scroll for ruler-------------------------
   const handleTopRulerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (canvasRef.current) {
       // Scroll horizontally based on wheel delta
@@ -366,6 +499,11 @@ const Canvas: React.FC = () => {
       canvasRef.current.scrollTop += e.deltaY;
     }
   };
+  //--------------scroll for ruler-------------------------
+  ////
+
+  ////
+  //--------------delete shape-------------------------
   const deleteSelectedShapes = () => {
     if (selectedIds.length > 0) {
       // Filter out the selected shapes
@@ -380,8 +518,6 @@ const Canvas: React.FC = () => {
       setSelectedIds([]);
     }
   };
-
-  // Add a useEffect hook to handle keydown events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -398,7 +534,25 @@ const Canvas: React.FC = () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [selectedIds, shapes]);
+  //--------------delete shape-------------------------
+  ////
 
+  const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
+    // Show toast when clicking on an empty area
+    if(e.evt.button === 0)
+    {
+      toast("You clicked", {
+        position: "top-right",
+        autoClose: 1000, // Change this value to adjust the display duration
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "light",
+      });
+    }
+   
+  };
   return (
     <div className="container">
       <Ruler
@@ -406,27 +560,45 @@ const Canvas: React.FC = () => {
         handleLeftRulerWheel={handleLeftRulerWheel}
         scrollOffsetX={scrollOffsetX}
         scrollOffsetY={scrollOffsetY}
+        stagePos={stagePos}
+        stageScale={stageScale}
       />
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         className="canvas-container"
         ref={canvasRef}
+        style={{overflow:"hidden"}}
       >
+        <ToastContainer />
         <Stage
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
+          scaleX={stageScale}
+          scaleY={stageScale}
+          x={stagePos.x}
+          y={stagePos.y}
+          onWheel={handleWheel}
           ref={stageRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onContextMenu={handleContextMenu} // Prevents default context menu
           onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
             if (e.key === "Delete" || e.key === "Backspace") {
               deleteSelectedShapes();
             }
           }}
+          onClick={handleStageClick}
+          // style={{overflow:"hidden"}}
         >
-          <Layer>
+          <Layer
+            listening={false}
+            x={(-stagePos.x)/ stageScale}
+            y={(-stagePos.y)/ stageScale}
+            scaleX={1 / stageScale}
+            scaleY={1 / stageScale}
+          >
             {backgroundImage && (
               <KonvaImage
                 image={backgroundImage}
@@ -442,6 +614,34 @@ const Canvas: React.FC = () => {
             {shapes.map((shape) => {
               if (shape.type === "rectangle") {
                 const rect = shape as RectangleAttrs;
+                const dragBoundFunc = (pos: { x: number; y: number }) => {
+                  const stage = stageRef.current;
+                  if (stage) {
+                    // Get the size of the visible area
+                    const stageWidth = stage.width();
+                    const stageHeight = stage.height();
+  
+                    // Adjust for scaling and panning
+                    const scale = stageScale;
+                    const xOffset = stagePos.x;
+                    const yOffset = stagePos.y;
+  
+                    // Calculate the visible area in stage coordinates
+                    const minX = -xOffset / scale;
+                    const minY = -yOffset / scale;
+                    const maxX = minX + stageWidth / scale - rect.width;
+                    const maxY = minY + stageHeight / scale - rect.height;
+  
+                    // Constrain the position
+                    let x = pos.x;
+                    let y = pos.y;
+  
+                    x = Math.max(minX, Math.min(x, maxX));
+                    y = Math.max(minY, Math.min(y, maxY));
+                    return { x, y };
+                  }
+                  return pos;
+                };
                 return (
                   <Rectangle
                     key={rect.id}
@@ -455,11 +655,39 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, rect.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, rect.id)}
+                    dragBoundFunc={dragBoundFunc}
                   />
                 );
               } else if (shape.type === "circle") {
                 const circle = shape as CircleAttrs;
-
+                const dragBoundFunc = (pos: { x: number; y: number }) => {
+                  const stage = stageRef.current;
+                  if (stage) {
+                    // Get the size of the visible area
+                    const stageWidth = stage.width();
+                    const stageHeight = stage.height();
+  
+                    // Adjust for scaling and panning
+                    const scale = stageScale;
+                    const xOffset = stagePos.x;
+                    const yOffset = stagePos.y;
+  
+                    // Calculate the visible area in stage coordinates
+                    const minX = -xOffset / scale;
+                    const minY = -yOffset / scale;
+                    const maxX = minX + stageWidth / scale - circle.radius;
+                    const maxY = minY + stageHeight / scale - circle.radius;
+  
+                    // Constrain the position
+                    let x = pos.x;
+                    let y = pos.y;
+  
+                    x = Math.max(minX, Math.min(x, maxX));
+                    y = Math.max(minY, Math.min(y, maxY));
+                    return { x, y};
+                  }
+                  return pos;
+                };
                 return (
                   <Circle
                     key={circle.id}
@@ -472,11 +700,39 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, circle.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, circle.id)}
+                    dragBoundFunc={dragBoundFunc}
                   />
                 );
               } else if (shape.type === "star") {
                 const star = shape as StarAttrs;
-
+                const dragBoundFunc = (pos: { x: number; y: number }) => {
+                  const stage = stageRef.current;
+                  if (stage) {
+                    // Get the size of the visible area
+                    const stageWidth = stage.width();
+                    const stageHeight = stage.height();
+  
+                    // Adjust for scaling and panning
+                    const scale = stageScale;
+                    const xOffset = stagePos.x;
+                    const yOffset = stagePos.y;
+  
+                    // Calculate the visible area in stage coordinates
+                    const minX = -xOffset / scale;
+                    const minY = -yOffset / scale;
+                    const maxX = minX + stageWidth / scale - star.outerRadius;
+                    const maxY = minY + stageHeight / scale - star.outerRadius;
+  
+                    // Constrain the position
+                    let x = pos.x;
+                    let y = pos.y;
+  
+                    x = Math.max(minX, Math.min(x, maxX));
+                    y = Math.max(minY, Math.min(y, maxY));
+                    return { x, y};
+                  }
+                  return pos;
+                };
                 return (
                   <Star
                     key={star.id}
@@ -491,6 +747,7 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, star.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, star.id)}
+                    dragBoundFunc={dragBoundFunc}
                   />
                 );
               }
@@ -517,10 +774,10 @@ const Canvas: React.FC = () => {
             {/* Selection Rectangle */}
             {selectionRect.visible && (
               <Rect
-                x={selectionRect.x}
-                y={selectionRect.y}
-                width={selectionRect.width}
-                height={selectionRect.height}
+                x={(selectionRect.x - stagePos.x) / stageScale}
+                y={(selectionRect.y - stagePos.y) / stageScale}
+                width={selectionRect.width / stageScale}
+                height={selectionRect.height / stageScale}
                 fill="rgba(0, 0, 255, 0.2)"
                 listening={false}
               />
@@ -529,42 +786,43 @@ const Canvas: React.FC = () => {
               <>
                 {/* Display Mouse Coordinates */}
                 <Text
-                  x={mouseCoords.x + 5}
-                  y={mouseCoords.y - 15} // 10px above the cursor
-                  text={`(${mouseCoords.x}, ${mouseCoords.y})`}
-                  fontSize={12}
+                  x={(mouseCoords.x - stagePos.x) / stageScale + 5 / stageScale}
+                  y={
+                    (mouseCoords.y - stagePos.y) / stageScale - 15 / stageScale
+                  } // 10px above the cursor
+                  text={`(${Math.round(
+                    (mouseCoords.x - stagePos.x) / (stageScale * 10)
+                  )}, ${Math.round(
+                    (mouseCoords.y - stagePos.y) / (stageScale * 10)
+                  )})`}
+                  fontSize={12 / stageScale}
                   fill="black"
                 />
                 {/* Crosshair Lines */}
                 <Line
-                  points={[0, mouseCoords.y, CANVAS_WIDTH, mouseCoords.y]} // Horizontal line
+                  points={[
+                    (0 - stagePos.x) / stageScale,
+                    (mouseCoords.y - stagePos.y) / stageScale,
+                    CANVAS_WIDTH / stageScale,
+                    (mouseCoords.y - stagePos.y) / stageScale,
+                  ]} // Horizontal line
                   stroke="black"
-                  strokeWidth={1}
+                  strokeWidth={1 / stageScale}
                 />
                 <Line
-                  points={[mouseCoords.x, 0, mouseCoords.x, CANVAS_HEIGHT]} // Vertical line
+                  points={[
+                    (mouseCoords.x - stagePos.x) / stageScale,
+                    (0 - stagePos.y) / stageScale,
+                    (mouseCoords.x - stagePos.x) / stageScale,
+                    CANVAS_HEIGHT / stageScale,
+                  ]} // Vertical line
                   stroke="black"
-                  strokeWidth={1}
+                  strokeWidth={1 / stageScale}
                 />
               </>
             )}
           </Layer>
         </Stage>
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 35,
-          right: 10,
-          background: "rgba(255, 255, 255, 0.8)",
-          padding: "0px",
-          paddingRight: "10px",
-          paddingLeft: "10px",
-          borderRadius: "5px",
-          boxShadow: "0 0 5px rgba(0,0,0,0.3)",
-        }}
-      >
-        {showMouseInfo && <p>{mouseMessage}</p>}
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ interface CustomCircleProps {
   rotation: number;
   onShapeClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>, id: string) => void;
+  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
 }
 const Circle: React.FC<CustomCircleProps> = ({
   id,
@@ -23,6 +24,7 @@ const Circle: React.FC<CustomCircleProps> = ({
   rotation,
   onShapeClick,
   onDragEnd,
+  dragBoundFunc,
 }) => {
   return (
     <>
@@ -36,6 +38,7 @@ const Circle: React.FC<CustomCircleProps> = ({
         draggable
         onClick={(e) => onShapeClick(e, id)}
         onDragEnd={(e) => onDragEnd(e, id)}
+        dragBoundFunc={dragBoundFunc}
       />
     </>
   );
