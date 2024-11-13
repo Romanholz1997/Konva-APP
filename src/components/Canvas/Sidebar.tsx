@@ -39,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
       <DraggableItem shapeType="rectangle" onDragStart={onDragStart} />
       <DraggableItem shapeType="circle" onDragStart={onDragStart} />
       <DraggableItem shapeType="star" onDragStart={onDragStart} />
-      <DraggableItem shapeType="Ellipse" onDragStart={onDragStart} />
+      {/* <DraggableItem shapeType="Ellipse" onDragStart={onDragStart} /> */}
     </div>
   );
 };

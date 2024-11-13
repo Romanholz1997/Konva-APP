@@ -91,8 +91,8 @@ const Canvas: React.FC = () => {
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
-    const scaleBy = 1.02;
-    const newScale = e.evt.deltaY > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+    const scaleBy = 1.5;
+    const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
 
     const mousePointTo = {
       x: (pointer.x - stagePos.x) / oldScale,
@@ -104,8 +104,11 @@ const Canvas: React.FC = () => {
       y: pointer.y - mousePointTo.y * newScale,
     };
 
-    setStageScale(newScale);
-    setStagePos(newPos);
+    if(newScale > 0.18 && newScale < 5){
+      setStageScale(newScale);
+      setStagePos(newPos);
+    }   
+    
   };
   const handleContextMenu = (e: KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
@@ -130,6 +133,18 @@ const Canvas: React.FC = () => {
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     // Deselect shapes if clicked on empty area
     if (e.target === stageRef.current) {
+      if(e.evt.button === 0)
+        {
+          toast("You clicked", {
+            position: "top-right",
+            autoClose: 1000, // Change this value to adjust the display duration
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "light",
+          });
+        }
       if (e.evt.button === 2) {
         e.evt.preventDefault(); // Prevent the context menu from appearing
         setIsPanning(true);
@@ -166,7 +181,11 @@ const Canvas: React.FC = () => {
           x: pointerPos.x - lastPos.x * stageScale,
           y: pointerPos.y - lastPos.y * stageScale,
         };
-        setStagePos(newPos);
+        if(newPos.x > -4000 && newPos.y > -4000 && newPos.x < 4000 && newPos.y < 4000)
+        {
+          setStagePos(newPos);
+        }
+        
       }
     }
     const pos = stageRef.current?.getPointerPosition();
@@ -490,13 +509,13 @@ const Canvas: React.FC = () => {
   const handleTopRulerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (canvasRef.current) {
       // Scroll horizontally based on wheel delta
-      canvasRef.current.scrollLeft += e.deltaY;
+      canvasRef.current.scrollLeft -= e.deltaY;
     }
   };
   const handleLeftRulerWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (canvasRef.current) {
       // Scroll vertically based on wheel delta
-      canvasRef.current.scrollTop += e.deltaY;
+      canvasRef.current.scrollTop -= e.deltaY;
     }
   };
   //--------------scroll for ruler-------------------------
@@ -539,18 +558,7 @@ const Canvas: React.FC = () => {
 
   const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
     // Show toast when clicking on an empty area
-    if(e.evt.button === 0)
-    {
-      toast("You clicked", {
-        position: "top-right",
-        autoClose: 1000, // Change this value to adjust the display duration
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: "light",
-      });
-    }
+    
    
   };
   return (
