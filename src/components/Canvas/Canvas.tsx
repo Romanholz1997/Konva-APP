@@ -185,7 +185,6 @@ const Canvas: React.FC = () => {
         {
           setStagePos(newPos);
         }
-        
       }
     }
     const pos = stageRef.current?.getPointerPosition();
@@ -663,7 +662,7 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, rect.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, rect.id)}
-                    dragBoundFunc={dragBoundFunc}
+                    // dragBoundFunc={dragBoundFunc}
                   />
                 );
               } else if (shape.type === "circle") {
@@ -708,7 +707,7 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, circle.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, circle.id)}
-                    dragBoundFunc={dragBoundFunc}
+                    // dragBoundFunc={dragBoundFunc}
                   />
                 );
               } else if (shape.type === "star") {
@@ -755,7 +754,7 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, star.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, star.id)}
-                    dragBoundFunc={dragBoundFunc}
+                    // dragBoundFunc={dragBoundFunc}
                   />
                 );
               }
@@ -806,7 +805,7 @@ const Canvas: React.FC = () => {
                   fontSize={12 / stageScale}
                   fill="black"
                 />
-                {/* Crosshair Lines */}
+
                 <Line
                   points={[
                     (0 - stagePos.x) / stageScale,
