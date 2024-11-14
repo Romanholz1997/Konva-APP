@@ -811,7 +811,7 @@ const Canvas: React.FC = () => {
                   points={[
                     (0 - stagePos.x) / stageScale,
                     (mouseCoords.y - stagePos.y) / stageScale,
-                    CANVAS_WIDTH / stageScale,
+                    (CANVAS_WIDTH  - stagePos.x)  / stageScale,
                     (mouseCoords.y - stagePos.y) / stageScale,
                   ]} // Horizontal line
                   stroke="black"
@@ -822,7 +822,7 @@ const Canvas: React.FC = () => {
                     (mouseCoords.x - stagePos.x) / stageScale,
                     (0 - stagePos.y) / stageScale,
                     (mouseCoords.x - stagePos.x) / stageScale,
-                    CANVAS_HEIGHT / stageScale,
+                    (CANVAS_HEIGHT- stagePos.y) / stageScale,
                   ]} // Vertical line
                   stroke="black"
                   strokeWidth={1 / stageScale}
