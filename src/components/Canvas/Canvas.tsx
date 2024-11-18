@@ -408,7 +408,7 @@ const Canvas: React.FC = () => {
   useEffect(() => {
     const imagePath = "./background.svg"; // Replace with your SVG path
     loadBackgroundImage(imagePath);
-    const svgPath = "./ball.svg"; // Replace with your SVG path
+    const svgPath = "./science.svg"; // Replace with your SVG path
     loadSvgImage(svgPath);
   }, []);
   const loadSvgImage = (src: string) => {
@@ -915,7 +915,7 @@ const Canvas: React.FC = () => {
         | "rectangle"
         | "circle"
         | "star"
-        | "ball";
+        | "science";
 
       let newShape: Shape;
       switch (shapeType) {
@@ -955,13 +955,13 @@ const Canvas: React.FC = () => {
             rotation: 0, // Initialize rotation
           };
           break;
-        case "ball":
+        case "science":
           newShape = {
             id: "ball_" + nextId,
             image: svgImage,
             type: "SVG",
-            x: pointer.x, 
-            y: pointer.y,
+            x: pointer.x - 50, 
+            y: pointer.y - 50,
             width: 100,
             height: 100,
             rotation: 0
