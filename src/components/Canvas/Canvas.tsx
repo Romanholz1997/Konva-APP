@@ -196,8 +196,8 @@ const Canvas: React.FC = () => {
         const newShape: Shape = {
           id: 'rectangle_' + (localNextId + i),
           type: 'rectangle',
-          x: x - 50,
-          y: y - 50,
+          x: x,
+          y: y,
           width: width,
           height: height,
           fill: fill,
