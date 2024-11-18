@@ -1135,17 +1135,14 @@ const Canvas: React.FC = () => {
                     const scale = stageScale;
                     const xOffset = stagePos.x;
                     const yOffset = stagePos.y;
-  
-                    // Calculate the visible area in stage coordinates
-                    const minX = -xOffset / scale;
-                    const minY = -yOffset / scale;
-                    const maxX = minX + stageWidth / scale - rect.width;
-                    const maxY = minY + stageHeight / scale - rect.height;
-  
+                      // Calculate the visible area in stage coordinates
+                    const minX = xOffset * scale;
+                    const minY = yOffset * scale;
+                    const maxX = (CANVAS_WIDTH - rect.width) * scale ;
+                    const maxY = (CANVAS_WIDTH - rect.height) * scale;  
                     // Constrain the position
                     let x = pos.x;
                     let y = pos.y;
-  
                     x = Math.max(minX, Math.min(x, maxX));
                     y = Math.max(minY, Math.min(y, maxY));
                     return { x, y };
@@ -1165,13 +1162,41 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, rect.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, rect.id)}
-                    // dragBoundFunc={dragBoundFunc}
+                    dragBoundFunc={dragBoundFunc}
                   />
                 );
               }
               else if(shape.type === "SVG")
               {
                 const svg = shape as SVGAttrs;
+                const dragBoundFunc = (pos: { x: number; y: number }) => {
+                  const stage = stageRef.current;
+                  if (stage) {
+                    // Get the size of the visible area
+                    const stageWidth = stage.width();
+                    const stageHeight = stage.height();
+  
+                    // Adjust for scaling and panning
+                    const scale = stageScale;
+                    const xOffset = stagePos.x;
+                    const yOffset = stagePos.y;
+  
+                    // Calculate the visible area in stage coordinates
+                    const minX = (xOffset) * scale;
+                    const minY = (yOffset) * scale;
+                    const maxX = (stageWidth -svg.width) * scale ;
+                    const maxY = (stageHeight-svg.height) * scale;
+  
+                    // Constrain the position
+                    let x = pos.x;
+                    let y = pos.y;
+  
+                    x = Math.max(minX, Math.min(x, maxX));
+                    y = Math.max(minY, Math.min(y, maxY));
+                    return { x, y};
+                  }
+                  return pos;
+                };
                 return(
                   svg.image && ( 
                     
@@ -1187,7 +1212,7 @@ const Canvas: React.FC = () => {
                       onShapeClick={(e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, svg.id)}
                       // // Remove onTransformEnd from individual shapes
                       onDragEnd={(e) => handleDragEnd(e, svg.id)}
-                      //dragBoundFunc={dragBoundFunc}
+                      dragBoundFunc={dragBoundFunc}
                     />
                   )
                 )              
@@ -1207,10 +1232,10 @@ const Canvas: React.FC = () => {
                     const yOffset = stagePos.y;
   
                     // Calculate the visible area in stage coordinates
-                    const minX = -xOffset / scale;
-                    const minY = -yOffset / scale;
-                    const maxX = minX + stageWidth / scale - circle.radius;
-                    const maxY = minY + stageHeight / scale - circle.radius;
+                    const minX = (xOffset+circle.radius) * scale;
+                    const minY = (yOffset+circle.radius) * scale;
+                    const maxX = (stageWidth-circle.radius) * scale ;
+                    const maxY = (stageHeight-circle.radius) * scale;
   
                     // Constrain the position
                     let x = pos.x;
@@ -1234,7 +1259,7 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, circle.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, circle.id)}
-                    // dragBoundFunc={dragBoundFunc}
+                    dragBoundFunc={dragBoundFunc}
                   />
                 );
               } else if (shape.type === "star") {
@@ -1252,10 +1277,10 @@ const Canvas: React.FC = () => {
                     const yOffset = stagePos.y;
   
                     // Calculate the visible area in stage coordinates
-                    const minX = -xOffset / scale;
-                    const minY = -yOffset / scale;
-                    const maxX = minX + stageWidth / scale - star.outerRadius;
-                    const maxY = minY + stageHeight / scale - star.outerRadius;
+                    const minX = (xOffset + star.outerRadius) * scale;
+                    const minY = (yOffset + star.outerRadius) * scale;
+                    const maxX = (stageWidth - star.outerRadius) * scale ;
+                    const maxY = (stageHeight  - star.outerRadius) * scale;
   
                     // Constrain the position
                     let x = pos.x;
@@ -1281,7 +1306,7 @@ const Canvas: React.FC = () => {
                     onShapeClick={(e) => handleShapeClick(e, star.id)}
                     // Remove onTransformEnd from individual shapes
                     onDragEnd={(e) => handleDragEnd(e, star.id)}
-                    // dragBoundFunc={dragBoundFunc}
+                    dragBoundFunc={dragBoundFunc}
                   />
                 );
               }
