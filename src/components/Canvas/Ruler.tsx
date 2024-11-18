@@ -71,9 +71,16 @@ const Ruler: React.FC<RulerProps> = ({
     {
       startValue = -Math.round(offset);
     }    
-    for (let unit = startValue; unit <= 4000; unit += 1) {
-      
-      const position = unit * pixelsPerUnit + offset - offsetScroll;
+    for (let unit = 0; unit <= 400; unit += 1) {
+      let position = 0
+      if(offset > 0)
+      {
+        position = unit * pixelsPerUnit - offsetScroll;
+      }
+      else
+      {
+        position = unit * pixelsPerUnit + offset - offsetScroll;
+      }
       // Determine if it's a major tick (you can add logic for minor ticks if needed)
       let isMajorTick = false;
       if (unit % 10 === 0) {

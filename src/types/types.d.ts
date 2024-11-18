@@ -1,6 +1,6 @@
 // src/types.ts
 
-export type Shape = RectangleAttrs | CircleAttrs | StarAttrs;
+export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs;
 
 export interface RectangleAttrs {
   id: string;
@@ -10,6 +10,17 @@ export interface RectangleAttrs {
   width: number;
   height: number;
   fill: string;
+  rotation: number;
+}
+
+export interface SVGAttrs {
+  id: string;
+  type: "SVG";
+  image: HTMLImageElement | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   rotation: number;
 }
 
@@ -33,6 +44,14 @@ export interface StarAttrs {
   outerRadius: number;
   fill: string;
   rotation: number;
+}
+
+export interface SVGProps {
+  shapeProps: SVGAttrs;
+  isSelected: boolean;
+  onSelect: () => void;
+  onChange: (newAttrs: SVGAttrs) => void;
+  onDragMove: (handleDragMove) => void;
 }
 
 export interface RectangleProps {

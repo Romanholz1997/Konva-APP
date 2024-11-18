@@ -9,6 +9,7 @@ import {
   Line,
 } from "react-konva";
 import Konva from "konva";
+import { saveAs } from 'file-saver';
 import { KonvaEventObject } from "konva/lib/Node";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -18,24 +19,61 @@ import {
   RectangleAttrs,
   StarAttrs,
   CircleAttrs,
+  SVGAttrs
 } from "../../types/types";
 import Rectangle from "./Rectangle";
 import Circle from "./Circle";
 import Star from "./Star";
+import SVGShape from "./SVGShape";
 
 const CANVAS_WIDTH = 4000;
 const CANVAS_HEIGHT = 4000;
+
+interface Radii {
+  innerRadius: number;
+  outerRadius: number;
+  centerX: number;
+  centerY: number;
+}
+
+const imageToDataURL = (image: HTMLImageElement): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (!image.complete || image.naturalWidth === 0) {
+      image.onload = () => {
+        convertImage();
+      };
+      image.onerror = () => {
+        reject(new Error('Failed to load image'));
+      };
+    } else {
+      convertImage();
+    }
+
+    function convertImage() {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(image, 0, 0);
+          const dataURL = canvas.toDataURL('image/png');
+          resolve(dataURL);
+        } else {
+          reject(new Error('Canvas context is null'));
+        }
+      } catch (error) {
+        reject(error);
+      }
+    }
+  });
+};
+
 const Canvas: React.FC = () => {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [nextId, setNextId] = useState<number>(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [selectionRect, setSelectionRect] = useState({
-    visible: false,
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-  });
+
 
   const [mouseCoords, setMouseCoords] = useState<{ x: number; y: number }>({
     x: 0,
@@ -46,7 +84,6 @@ const Canvas: React.FC = () => {
   const transformerRef = useRef<Konva.Transformer>(null);
   const layerRef = useRef<Konva.Layer>(null);
 
-  const [isSelecting, setIsSelecting] = useState(false);
 
   const [scrollOffsetX, setScrollOffsetX] = useState(0);
   const [scrollOffsetY, setScrollOffsetY] = useState(0);
@@ -63,13 +100,327 @@ const Canvas: React.FC = () => {
 
   const [backgroundImage, setBackgroundImage] =
     useState<HTMLImageElement | null>(null);
+  const [svgImage, seSvgImage] =
+  useState<HTMLImageElement | null>(null);
 
+  const [svgContent, setSvgContent] = useState<string | null>(null);
+  const [konvaShapes, setKonvaShapes] = useState<JSX.Element[]>([]);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'image/svg+xml') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSvgContent(e.target?.result as string);
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please upload a valid SVG file.');
+    }
+  };
+  const getRotation = (element: Element): number => {
+    const transform = element.getAttribute('transform');
+    if (transform) {
+      const match = transform.match(/rotate\(([^)]+)\)/);
+      if (match) {
+        const params = match[1].split(',').map(Number);
+        return params[0]; // Rotation angle
+      }
+    }
+    return 0;
+  };
+  const calculateRadii = (points: number[]): Radii => {
+    if (points.length < 2) {
+      return {
+        innerRadius: 0,
+        outerRadius: 0,
+        centerX: 0,
+        centerY: 0,
+      };
+    }
+  
+    let centerX = 0;
+    let centerY = 0;
+    const numPoints = points.length / 2;
+  
+    // Calculate the center of the star
+    for (let i = 0; i < numPoints; i++) {
+      centerX += points[i * 2];
+      centerY += points[i * 2 + 1];
+    }
+  
+    centerX /= numPoints;
+    centerY /= numPoints;
+  
+    let innerRadius = Infinity;
+    let outerRadius = -Infinity;
+  
+    // Calculate distances from the center
+    for (let i = 0; i < numPoints; i++) {
+      const x = points[i * 2];
+      const y = points[i * 2 + 1];
+      const distance = Math.hypot(x - centerX, y - centerY);
+  
+      if (distance < innerRadius) {
+        innerRadius = distance;
+      }
+      if (distance > outerRadius) {
+        outerRadius = distance;
+      }
+    }
+  
+    return {
+      innerRadius,
+      outerRadius,
+      centerX,
+      centerY,
+    };
+  };
+  useEffect(() => {
+    if (svgContent) {
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const newShapes: Shape[] = [];
+      let localNextId = nextId;
+
+      // Handle <rect> elements
+      const rectElements = svgDoc.getElementsByTagName('rect');
+      for (let i = 0; i < rectElements.length; i++) {
+        const rect = rectElements[i];
+        const x = parseFloat(rect.getAttribute('x') || '0');
+        const y = parseFloat(rect.getAttribute('y') || '0');
+        const width = parseFloat(rect.getAttribute('width') || '0');
+        const height = parseFloat(rect.getAttribute('height') || '0');
+        const fill = rect.getAttribute('fill') || 'black';
+        const rotation = getRotation(rect);
+
+        const newShape: Shape = {
+          id: 'rectangle_' + (localNextId + i),
+          type: 'rectangle',
+          x: x - 50,
+          y: y - 50,
+          width: width,
+          height: height,
+          fill: fill,
+          rotation: rotation,
+        };
+        newShapes.push(newShape);
+      }
+      localNextId += rectElements.length;
+
+      // Handle <circle> elements
+      const circleElements = svgDoc.getElementsByTagName('circle');
+      for (let i = 0; i < circleElements.length; i++) {
+        const circle = circleElements[i];
+        const cx = parseFloat(circle.getAttribute('cx') || '0');
+        const cy = parseFloat(circle.getAttribute('cy') || '0');
+        const r = parseFloat(circle.getAttribute('r') || '0');
+        const fill = circle.getAttribute('fill') || 'black';
+
+        const newShape: Shape = {
+          id: 'circle_' + (localNextId + i),
+          type: 'circle',
+          x: cx,
+          y: cy,
+          radius: r,
+          fill: fill,
+          rotation: 0,
+        };
+        newShapes.push(newShape);
+      }
+      localNextId += circleElements.length;
+
+
+      const polygonElements = svgDoc.getElementsByTagName('polygon');
+      for (let i = 0; i < polygonElements.length; i++) {
+        const polygon = polygonElements[i];
+        const pointsAttr = polygon.getAttribute('points') || '';
+        const fill = polygon.getAttribute('fill') || 'black';
+        const rotation = getRotation(polygon);
+
+        // Convert points string to an array of numbers
+        const points = pointsAttr
+          .trim()
+          .split(/\s+|,/)
+          .map((coord) => parseFloat(coord));
+        const radii = calculateRadii(points)
+
+        const newShape: Shape = {
+          id: 'star_' + (localNextId + i),
+          type: 'star',
+          x: radii.centerX,
+          y: radii.centerY,
+          numPoints:5,
+          innerRadius: radii.innerRadius,
+          outerRadius: radii.outerRadius,
+          rotation: rotation,
+          fill:fill
+        };
+        newShapes.push(newShape);
+      }
+      localNextId += circleElements.length;
+
+      // Handle <image> elements
+      const imageElements = svgDoc.getElementsByTagName('image');
+      const imagePromises: Promise<Shape>[] = [];
+
+      for (let i = 0; i < imageElements.length; i++) {
+        const imageElement = imageElements[i];
+        const x = parseFloat(imageElement.getAttribute('x') || '0');
+        const y = parseFloat(imageElement.getAttribute('y') || '0');
+        const width = parseFloat(imageElement.getAttribute('width') || '0');
+        const height = parseFloat(imageElement.getAttribute('height') || '0');
+        const rotation = getRotation(imageElement);
+        const href =
+          imageElement.getAttribute('href') || imageElement.getAttribute('xlink:href') || '';
+
+        const promise = new Promise<Shape>((resolve, reject) => {
+          if (href) {
+            const img = new window.Image();
+            img.crossOrigin = 'Anonymous';
+            img.src = href;
+
+            img.onload = () => {
+              const newShape: Shape = {
+                id: 'SVG_' + (localNextId + i),
+                type: 'SVG',
+                image: img,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                rotation: rotation,
+              };
+              resolve(newShape);
+            };
+
+            img.onerror = () => {
+              console.error(`Failed to load image at ${href}`);
+              // You can choose to resolve with a placeholder or reject
+              resolve({
+                id: 'SVG_' + (localNextId + i),
+                type: 'SVG',
+                image: null,
+                x: x,
+                y: y,
+                width: width,
+                height: height,
+                rotation: rotation,
+              });
+            };
+          } else {
+            // No href, resolve with a placeholder
+            resolve({
+              id: 'SVG_' + (localNextId + i),
+              type: 'SVG',
+              image: null,
+              x: x,
+              y: y,
+              width: width,
+              height: height,
+              rotation: rotation,
+            });
+          }
+        });
+
+        imagePromises.push(promise);
+      }
+      localNextId += imageElements.length;
+
+      // Wait for all image promises to resolve
+      Promise.all(imagePromises).then((imageShapes) => {
+        const allShapes = [...shapes, ...newShapes, ...imageShapes];
+        setShapes(allShapes);
+        setNextId(localNextId);
+      });
+    }
+  }, [svgContent]);
+  const saveAsSVG = () => {
+    if (stageRef.current) {
+      const svgPromises = shapes.map((shape) => {
+        switch (shape.type) {
+          case 'rectangle':
+            const rotationRect = shape.rotation || 0;
+            return Promise.resolve(
+              `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationRect}, ${shape.x}, ${shape.y})"/>`
+            );
+          case 'circle':
+            return Promise.resolve(
+              `<circle cx="${shape.x}" cy="${shape.y}" r="${shape.radius}" fill="${shape.fill}" />`
+            );
+          case 'star':
+            const rotationStar = shape.rotation || 0;
+            const starPoints = calculateStarPoints(
+              shape.x,
+              shape.y,
+              shape.numPoints || 5,
+              shape.innerRadius || 10,
+              shape.outerRadius || 20
+            );
+            return Promise.resolve(
+              `<polygon points="${starPoints}" fill="${shape.fill}" transform="rotate(${rotationStar}, ${shape.x}, ${shape.y})"/>`
+            );
+          case 'SVG':
+            if (shape.image) {
+              return imageToDataURL(shape.image).then((dataURL) => {
+                const rotationSVG = shape.rotation || 0;
+                return `
+                  <image 
+                    href="${dataURL}" 
+                    x="${shape.x}" 
+                    y="${shape.y}" 
+                    width="${shape.width}" 
+                    height="${shape.height}" 
+                    transform="rotate(${rotationSVG}, ${shape.x}, ${shape.y})"
+                  />
+                `;
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          default:
+            return Promise.resolve('');
+        }
+      });
+
+      Promise.all(svgPromises).then((resolvedSvgElements) => {
+        const svgString = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${stageRef.current!.width()}px" height="${stageRef.current!.height()}px">
+            ${resolvedSvgElements.join('')}
+          </svg>
+        `;
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        saveAs(blob, 'layout.svg');
+      });
+    }
+  };
+  const calculateStarPoints = (centerX: number, centerY: number, numPoints: number, innerRadius: number, outerRadius: number): string => {
+    let results = '';
+    const angle = Math.PI / numPoints;
+    for (let i = 0; i < 2 * numPoints; i++) {
+      const r = i % 2 === 0 ? outerRadius : innerRadius;
+      const currX = centerX + r * Math.sin(i * angle);
+      const currY = centerY - r * Math.cos(i * angle);
+      results += `${currX},${currY} `;
+    }
+    return results.trim();
+  };
   // Load the background image
   useEffect(() => {
     const imagePath = "./background.svg"; // Replace with your SVG path
     loadBackgroundImage(imagePath);
+    const svgPath = "./ball.svg"; // Replace with your SVG path
+    loadSvgImage(svgPath);
   }, []);
-
+  const loadSvgImage = (src: string) => {
+    const img = new window.Image();
+    img.src = src;
+    img.onload = () => {
+      seSvgImage(img);
+    };
+    img.onerror = (err) => {
+      console.error("Failed to load background image:", err);
+    };
+  };
   const loadBackgroundImage = (src: string) => {
     const img = new window.Image();
     img.src = src;
@@ -100,8 +451,8 @@ const Canvas: React.FC = () => {
     };
 
     const newPos = {
-      x: pointer.x - mousePointTo.x * newScale,
-      y: pointer.y - mousePointTo.y * newScale,
+      x: (pointer.x - mousePointTo.x * newScale) > 0 ? 0: pointer.x - mousePointTo.x * newScale,
+      y: (pointer.y - mousePointTo.y * newScale) > 0 ? 0: pointer.y - mousePointTo.y * newScale,
     };
 
     if(newScale > 0.18 && newScale < 5){
@@ -130,9 +481,55 @@ const Canvas: React.FC = () => {
     }
   }, []);
 
-  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    // Deselect shapes if clicked on empty area
-    if (e.target === stageRef.current) {
+  useEffect(() => {
+    const transformer = transformerRef.current;
+    if (transformer) {
+      const nodes = selectedIds
+        .map((id) => layerRef.current?.findOne<Konva.Rect>(`#${id}`))
+        .filter(Boolean) as Konva.Node[];
+      transformer.nodes(nodes);
+      transformer.getLayer()?.batchDraw();
+    }
+  }, [selectedIds]);
+
+  const selectionRectRef = React.useRef<Konva.Rect>(null);
+  const selection = React.useRef<{
+    visible: boolean;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  }>({
+    visible: false,
+    x1: 0,
+    y1: 0,
+    x2: 0,
+    y2: 0,
+  });
+  const updateSelectionRect = () => {
+    const node = selectionRectRef.current;
+    if (node) {
+      node.setAttrs({
+        visible: selection.current.visible,
+        x: Math.min(selection.current.x1, selection.current.x2),
+        y: Math.min(selection.current.y1, selection.current.y2),
+        width: Math.abs(selection.current.x1 - selection.current.x2),
+        height: Math.abs(selection.current.y1 - selection.current.y2),
+        fill: "rgba(0, 161, 255, 0.3)",
+      });
+      node.getLayer()?.batchDraw();
+    }
+  };
+
+  const onClickTap = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    
+    const { x1, y1, x2, y2 } = selection.current;
+    const moved = x1 !== x2 || y1 !== y2;
+    if (moved) {
+      return;
+    }
+    const stage = e.target.getStage();
+    if (e.target === stage) {
       if(e.evt.button === 0)
         {
           toast("You clicked", {
@@ -145,6 +542,21 @@ const Canvas: React.FC = () => {
             theme: "light",
           });
         }
+      setSelectedIds([]);
+      return;
+    }   
+  };
+
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {    
+    // Deselect shapes if clicked on empty area
+    if (e.target === stageRef.current) {     
+      const isElement = e.target.findAncestor(".elements-container", true);
+      const isTransformer = e.target.findAncestor("Transformer");
+      if (isElement || isTransformer) {
+        return;
+      }
+
+     
       if (e.evt.button === 2) {
         e.evt.preventDefault(); // Prevent the context menu from appearing
         setIsPanning(true);
@@ -155,20 +567,18 @@ const Canvas: React.FC = () => {
             y: (pointerPos.y - stagePos.y) / stageScale,
           });
         }
-      } else {
-        setSelectedIds([]);
-        const pos = stageRef.current?.getPointerPosition();
+      }  
+      else{
+        const pos = e.target.getStage()?.getPointerPosition();
         if (pos) {
-          setSelectionRect({
-            visible: true,
-            x: pos.x,
-            y: pos.y,
-            width: 0,
-            height: 0,
-          });
-          setIsSelecting(true);
-        }
-      }
+          selection.current.visible = true;
+          selection.current.x1 = stagePos.x > 0 ?(pos.x) / stageScale: (pos.x - stagePos.x) / stageScale;
+          selection.current.y1 = stagePos.y > 0 ?(pos.y) / stageScale:(pos.y - stagePos.y) / stageScale;
+          selection.current.x2 = stagePos.x > 0 ?(pos.x) / stageScale: (pos.x - stagePos.x) / stageScale;
+          selection.current.y2 = stagePos.y > 0 ?(pos.y) / stageScale:(pos.y - stagePos.y) / stageScale;
+          updateSelectionRect();
+        } 
+      } 
     }
   };
 
@@ -177,14 +587,63 @@ const Canvas: React.FC = () => {
     if (isPanning) {
       const pointerPos = stageRef.current?.getPointerPosition();
       if (pointerPos) {
+
         const newPos = {
           x: pointerPos.x - lastPos.x * stageScale,
           y: pointerPos.y - lastPos.y * stageScale,
         };
-        if(newPos.x > -4000 && newPos.y > -4000 && newPos.x < 4000 && newPos.y < 4000)
+        if(newPos.x/stageScale > 0 )
         {
-          setStagePos(newPos);
+          newPos.x = 0;
         }
+        if(newPos.y/stageScale >0)
+        {
+          newPos.y = 0;
+        }
+        if(newPos.x/stageScale < -((CANVAS_WIDTH - window.innerWidth + 230) / stageScale) )
+        {
+          newPos.x =  -((CANVAS_WIDTH - window.innerWidth + 230) );
+        }
+        if(newPos.y/stageScale < -((CANVAS_HEIGHT - window.innerHeight + 30) / stageScale))
+        {
+          newPos.y = -((CANVAS_HEIGHT - window.innerHeight + 30) );
+        }
+
+        setStagePos(newPos);
+        // let newX = stagePos.x; // Use current stage position
+        // let newY = stagePos.y; // Use current stage position
+    
+        // // Calculate the change in position
+        // const deltaX = (pointerPos.x - lastPos.x) / stageScale;
+        // const deltaY = (pointerPos.y - lastPos.y) / stageScale;
+    
+        // // Update new position based on delta
+        // // newX += deltaX;
+        // // newY += deltaY;
+    
+        // // Boundary checks for x
+        // if (newX > 0) {
+        //   newX = 0; // Prevent panning to the right
+        // }
+        // if (newX < -((CANVAS_WIDTH - window.innerWidth + 230) / stageScale)) {
+        //   newX = -((CANVAS_WIDTH - window.innerWidth + 230) / stageScale); // Prevent panning to the left
+        // }
+    
+        // // Boundary checks for y
+        // if (newY > 0) {
+        //   newY = 0; // Prevent panning down
+        // }
+        // if (newY < -((CANVAS_HEIGHT - window.innerHeight + 30) / stageScale)) {
+        //   newY = -((CANVAS_HEIGHT - window.innerHeight + 30) / stageScale); // Prevent panning up
+        // }
+    
+        // const newPos = {
+        //   x: newX,
+        //   y: newY,
+        // };
+    
+        // console.log(newPos);
+        // setStagePos(newPos);
       }
     }
     const pos = stageRef.current?.getPointerPosition();
@@ -195,26 +654,14 @@ const Canvas: React.FC = () => {
       } else {
         setShowMouseInfo(false);
       }
-      if (!isSelecting) {
-        return;
-      }
-      if (!isSelecting) {
-        return;
-      }
     }
-
-    if (pos && selectionRect.visible) {
-      const x = Math.min(pos.x, selectionRect.x);
-      const y = Math.min(pos.y, selectionRect.y);
-      const width = Math.abs(pos.x - selectionRect.x);
-      const height = Math.abs(pos.y - selectionRect.y);
-      setSelectionRect({
-        ...selectionRect,
-        x,
-        y,
-        width,
-        height,
-      });
+    if (!selection.current.visible) {
+      return;
+    }
+    if (pos) {
+      selection.current.x2 = stagePos.x > 0 ?(pos.x) / stageScale: (pos.x - stagePos.x) / stageScale;
+      selection.current.y2 =stagePos.y > 0 ?(pos.y) / stageScale:(pos.y - stagePos.y) / stageScale;
+      updateSelectionRect();
     }
   };
 
@@ -222,14 +669,21 @@ const Canvas: React.FC = () => {
     if (isPanning) {
       setIsPanning(false);
     }
-    if (isSelecting) {
-      setIsSelecting(false);
-      setSelectionRect({
-        ...selectionRect,
-        visible: false,
-      });
+    else{
 
-      const selBox = selectionRect;
+      selection.current.visible = false;
+      updateSelectionRect();
+
+      const { x1, y1, x2, y2 } = selection.current;
+      const moved = x1 !== x2 || y1 !== y2;
+      if (!moved) {
+        return;
+      }
+      const selBox = selectionRectRef.current?.getClientRect();
+
+      if (!selBox || !layerRef.current) {
+        return;
+      }
       const selected = shapes.filter((shape) => {
         const shapeNode = layerRef.current?.findOne<Konva.Rect>(`#${shape.id}`);
         if (shapeNode) {
@@ -237,10 +691,14 @@ const Canvas: React.FC = () => {
         }
         return false;
       });
-
+      
       setSelectedIds(selected.map((shape) => shape.id));
+
     }
+
   };
+
+
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -334,6 +792,15 @@ const Canvas: React.FC = () => {
             innerRadius: Math.max(5, shape.innerRadius * avgScale),
             outerRadius: Math.max(5, shape.outerRadius * avgScale),
           };
+        }else if(shape.type === "SVG"){
+          return {
+            ...shape,
+            x: node.x(),
+            y: node.y(),
+            rotation,
+            width: Math.max(5, node.width() * scaleX),
+            height: Math.max(5, node.height() * scaleY),
+          };
         } else {
           return shape;
         }
@@ -368,6 +835,30 @@ const Canvas: React.FC = () => {
     // Check if the point is within the unrotated rectangle
     return localX >= 0 && localX <= width && localY >= 0 && localY <= height;
   };
+  const isPointInRotatedSVG = (
+    px: number,
+    py: number,
+    rect: SVGAttrs
+  ): boolean => {
+    const { x, y, width, height, rotation } = rect;
+
+    // Translate point to rectangle's local coordinate system
+    const translatedX = px - x;
+    const translatedY = py - y;
+
+    // Convert rotation to radians and negate for inverse rotation
+    const theta = -rotation * (Math.PI / 180);
+
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+
+    // Rotate the point
+    const localX = translatedX * cos - translatedY * sin;
+    const localY = translatedX * sin + translatedY * cos;
+
+    // Check if the point is within the unrotated rectangle
+    return localX >= 0 && localX <= width && localY >= 0 && localY <= height;
+  };
   const isOverlapping = (x: number, y: number): boolean => {
     return shapes.some((shape) => {
       if (shape.type === "rectangle") {
@@ -378,6 +869,9 @@ const Canvas: React.FC = () => {
         const dx = x - circle.x;
         const dy = y - circle.y;
         return Math.sqrt(dx * dx + dy * dy) <= circle.radius;
+      } else if(shape.type === "SVG"){
+        const svg = shape as SVGAttrs;
+        return isPointInRotatedSVG(x, y, svg);
       } else if (shape.type === "star") {
         const star = shape as StarAttrs;
         return (
@@ -405,8 +899,8 @@ const Canvas: React.FC = () => {
       const stageRect = stageElement.getBoundingClientRect();
 
       const pointer = {
-        x: (e.clientX - stageRect.left - stagePos.x) / stageScale,
-        y: (e.clientY - stageRect.top - stagePos.y) / stageScale,
+        x: stagePos.x > 0 ? (e.clientX - stageRect.left)/ stageScale:  (e.clientX - stageRect.left - stagePos.x) / stageScale,
+        y: stagePos.y > 0 ? (e.clientY - stageRect.top) /stageScale :(e.clientY - stageRect.top - stagePos.y) / stageScale,
       };
 
       const overlapping = isOverlapping(pointer.x, pointer.y);
@@ -420,7 +914,8 @@ const Canvas: React.FC = () => {
       const shapeType = e.dataTransfer.getData("text/plain") as
         | "rectangle"
         | "circle"
-        | "star";
+        | "star"
+        | "ball";
 
       let newShape: Shape;
       switch (shapeType) {
@@ -458,6 +953,18 @@ const Canvas: React.FC = () => {
             outerRadius: 50,
             fill: "green",
             rotation: 0, // Initialize rotation
+          };
+          break;
+        case "ball":
+          newShape = {
+            id: "ball_" + nextId,
+            image: svgImage,
+            type: "SVG",
+            x: pointer.x, 
+            y: pointer.y,
+            width: 100,
+            height: 100,
+            rotation: 0
           };
           break;
         default:
@@ -554,12 +1061,6 @@ const Canvas: React.FC = () => {
   }, [selectedIds, shapes]);
   //--------------delete shape-------------------------
   ////
-
-  const handleStageClick = (e: KonvaEventObject<MouseEvent>) => {
-    // Show toast when clicking on an empty area
-    
-   
-  };
   return (
     <div className="container">
       <Ruler
@@ -583,8 +1084,8 @@ const Canvas: React.FC = () => {
           height={CANVAS_HEIGHT}
           scaleX={stageScale}
           scaleY={stageScale}
-          x={stagePos.x}
-          y={stagePos.y}
+          x={stagePos.x > 0?0:stagePos.x}
+          y={stagePos.y>0?0:stagePos.y}
           onWheel={handleWheel}
           ref={stageRef}
           onMouseDown={handleMouseDown}
@@ -596,15 +1097,17 @@ const Canvas: React.FC = () => {
               deleteSelectedShapes();
             }
           }}
-          onClick={handleStageClick}
+          onClick={onClickTap}
+          onTap={onClickTap}
+          // onClick={handleStageClick}
           // style={{overflow:"hidden"}}
         >
           <Layer
             listening={false}
-            x={(-stagePos.x)/ stageScale}
-            y={(-stagePos.y)/ stageScale}
-            scaleX={1 / stageScale}
-            scaleY={1 / stageScale}
+            // x={(-stagePos.x)/ stageScale}
+            // y={(-stagePos.y)/ stageScale}
+            // scaleX={1 / stageScale}
+            // scaleY={1 / stageScale}
           >
             {backgroundImage && (
               <KonvaImage
@@ -665,7 +1168,31 @@ const Canvas: React.FC = () => {
                     // dragBoundFunc={dragBoundFunc}
                   />
                 );
-              } else if (shape.type === "circle") {
+              }
+              else if(shape.type === "SVG")
+              {
+                const svg = shape as SVGAttrs;
+                return(
+                  svg.image && ( 
+                    
+                    <SVGShape
+                      image={svg.image}
+                      key={svg.id}
+                      id={svg.id}
+                      x={svg.x}
+                      y={svg.y}
+                      width={svg.width}
+                      height={svg.height}
+                      rotation={svg.rotation}
+                      onShapeClick={(e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, svg.id)}
+                      // // Remove onTransformEnd from individual shapes
+                      onDragEnd={(e) => handleDragEnd(e, svg.id)}
+                      //dragBoundFunc={dragBoundFunc}
+                    />
+                  )
+                )              
+              }
+               else if (shape.type === "circle") {
                 const circle = shape as CircleAttrs;
                 const dragBoundFunc = (pos: { x: number; y: number }) => {
                   const stage = stageRef.current;
@@ -777,51 +1304,44 @@ const Canvas: React.FC = () => {
               ]}
               onTransformEnd={handleTransformEnd} // Attach handler here
             />
+            <Rect ref={selectionRectRef} />
 
-            {/* Selection Rectangle */}
-            {selectionRect.visible && (
-              <Rect
-                x={(selectionRect.x - stagePos.x) / stageScale}
-                y={(selectionRect.y - stagePos.y) / stageScale}
-                width={selectionRect.width / stageScale}
-                height={selectionRect.height / stageScale}
-                fill="rgba(0, 0, 255, 0.2)"
-                listening={false}
-              />
-            )}
-            {showMouseInfo && (
+            {/* Selection Rectangle */}           
+            
+          </Layer>
+          <Layer>
+          {showMouseInfo && (
               <>
                 {/* Display Mouse Coordinates */}
                 <Text
-                  x={(mouseCoords.x - stagePos.x) / stageScale + 5 / stageScale}
+                  x={stagePos.x > 0? (mouseCoords.x) / stageScale + 5 / stageScale: (mouseCoords.x - stagePos.x) / stageScale + 5 / stageScale}
                   y={
-                    (mouseCoords.y - stagePos.y) / stageScale - 15 / stageScale
+                    stagePos.y > 0 ? (mouseCoords.y) / stageScale - 15 / stageScale: (mouseCoords.y - stagePos.y) / stageScale - 15 / stageScale
                   } // 10px above the cursor
                   text={`(${Math.round(
-                    (mouseCoords.x - stagePos.x) / (stageScale * 10)
+                    stagePos.x > 0?(mouseCoords.x) / (stageScale * 10) :(mouseCoords.x - stagePos.x) / (stageScale * 10)
                   )}, ${Math.round(
-                    (mouseCoords.y - stagePos.y) / (stageScale * 10)
+                    stagePos.y > 0 ? (mouseCoords.y) / (stageScale * 10) : (mouseCoords.y - stagePos.y) / (stageScale * 10)
                   )})`}
                   fontSize={12 / stageScale}
                   fill="black"
                 />
-
                 <Line
                   points={[
-                    (0 - stagePos.x) / stageScale,
-                    (mouseCoords.y - stagePos.y) / stageScale,
-                    (CANVAS_WIDTH  - stagePos.x)  / stageScale,
-                    (mouseCoords.y - stagePos.y) / stageScale,
+                    stagePos.x > 0? 0:(0 - stagePos.x) / stageScale,
+                    stagePos.y > 0? mouseCoords.y/stageScale :(mouseCoords.y - stagePos.y) / stageScale,
+                    stagePos.x > 0? CANVAS_WIDTH  / stageScale:(CANVAS_WIDTH  - stagePos.x)  / stageScale,
+                    stagePos.y > 0? mouseCoords.y / stageScale:(mouseCoords.y - stagePos.y) / stageScale,
                   ]} // Horizontal line
                   stroke="black"
                   strokeWidth={1 / stageScale}
                 />
                 <Line
                   points={[
-                    (mouseCoords.x - stagePos.x) / stageScale,
-                    (0 - stagePos.y) / stageScale,
-                    (mouseCoords.x - stagePos.x) / stageScale,
-                    (CANVAS_HEIGHT- stagePos.y) / stageScale,
+                    stagePos.x > 0? mouseCoords.x/stageScale :(mouseCoords.x - stagePos.x) / stageScale,
+                    stagePos.y > 0? 0:(0 - stagePos.y) / stageScale,
+                    stagePos.x > 0? mouseCoords.x/stageScale :(mouseCoords.x - stagePos.x) / stageScale,
+                    stagePos.y > 0? CANVAS_HEIGHT  / stageScale:(CANVAS_HEIGHT  - stagePos.y)  / stageScale,
                   ]} // Vertical line
                   stroke="black"
                   strokeWidth={1 / stageScale}
@@ -830,6 +1350,58 @@ const Canvas: React.FC = () => {
             )}
           </Layer>
         </Stage>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 40,
+          right: 10,
+          padding: "0px",
+        }}
+      >
+        <button style={{
+          backgroundColor: "#4CAF50", // Green background
+          color: "white", // White text
+          border: "none", // No border
+          padding: "10px 10px", // Top/bottom and left/right padding
+          textAlign: "center", // Center the text
+          textDecoration: "none", // No underline
+          display: "inline-block", // Inline block for proper spacing
+          fontSize: "15px", // Font size
+          borderRadius: "5px", // Rounded corners
+          cursor: "pointer", // Pointer cursor on hover
+          transition: "background-color 0.3s", // Smooth transition
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#45a049")} // Darker green on hover
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#4CAF50")} // Revert back on mouse leave
+        onClick={saveAsSVG}
+        >Save as SVG</button>
+        <label
+          style={{
+            display: "inline-block",
+            marginLeft: "10px",
+            cursor: "pointer",
+            backgroundColor: "#4CAF50",
+            color: "white",
+            padding: "10px 15px",
+            borderRadius: "5px",
+            fontSize: "15px",
+            textAlign: "center",
+            transition: "background-color 0.3s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#45a049")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#4CAF50")}
+        >
+          Upload SVG
+          <input
+            type="file"
+            accept=".svg"
+            style={{
+              display: "none", // Hide the default file input
+            }}
+            onChange={handleFileChange} 
+          />
+        </label>
       </div>
     </div>
   );
