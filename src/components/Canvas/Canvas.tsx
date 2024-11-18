@@ -1138,8 +1138,11 @@ const Canvas: React.FC = () => {
                       // Calculate the visible area in stage coordinates
                     const minX = xOffset * scale;
                     const minY = yOffset * scale;
-                    const maxX = (CANVAS_WIDTH - rect.width) * scale ;
-                    const maxY = (CANVAS_WIDTH - rect.height) * scale;  
+                    const theta = -rect.rotation * (Math.PI / 180);
+                    const maxX = (CANVAS_WIDTH -  rect.width) * scale  + stagePos.x;
+                    const maxY = (CANVAS_WIDTH -  rect.width) * scale  + stagePos.y;  
+                    // const maxX = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta)) * scale  + stagePos.x;
+                    // const maxY = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta) ) * scale  + stagePos.y;  
                     // Constrain the position
                     let x = pos.x;
                     let y = pos.y;
@@ -1184,8 +1187,8 @@ const Canvas: React.FC = () => {
                     // Calculate the visible area in stage coordinates
                     const minX = (xOffset) * scale;
                     const minY = (yOffset) * scale;
-                    const maxX = (stageWidth -svg.width) * scale ;
-                    const maxY = (stageHeight-svg.height) * scale;
+                    const maxX = (stageWidth -svg.width) * scale   + stagePos.x;
+                    const maxY = (stageHeight-svg.height) * scale   + stagePos.x;
   
                     // Constrain the position
                     let x = pos.x;
@@ -1234,8 +1237,8 @@ const Canvas: React.FC = () => {
                     // Calculate the visible area in stage coordinates
                     const minX = (xOffset+circle.radius) * scale;
                     const minY = (yOffset+circle.radius) * scale;
-                    const maxX = (stageWidth-circle.radius) * scale ;
-                    const maxY = (stageHeight-circle.radius) * scale;
+                    const maxX = (stageWidth-circle.radius) * scale   + stagePos.x;
+                    const maxY = (stageHeight-circle.radius) * scale  + stagePos.x;
   
                     // Constrain the position
                     let x = pos.x;
@@ -1279,8 +1282,8 @@ const Canvas: React.FC = () => {
                     // Calculate the visible area in stage coordinates
                     const minX = (xOffset + star.outerRadius) * scale;
                     const minY = (yOffset + star.outerRadius) * scale;
-                    const maxX = (stageWidth - star.outerRadius) * scale ;
-                    const maxY = (stageHeight  - star.outerRadius) * scale;
+                    const maxX = (stageWidth - star.outerRadius) * scale   + stagePos.x;
+                    const maxY = (stageHeight  - star.outerRadius) * scale  + stagePos.x;
   
                     // Constrain the position
                     let x = pos.x;
