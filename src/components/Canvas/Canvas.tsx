@@ -1026,12 +1026,13 @@ const Canvas: React.FC = () => {
       //       theme: "light",
       //     });
       //   }
-      setSelectedIds([]);
+      setSelectedIds([]);      
       return;
     }   
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {    
+    setTooltipVisible(false);
     // Deselect shapes if clicked on empty area
     if (e.target === stageRef.current) {     
       const isElement = e.target.findAncestor(".elements-container", true);
@@ -1040,7 +1041,7 @@ const Canvas: React.FC = () => {
         return;
       }
 
-     
+      
       if (e.evt.button === 2) {
         e.evt.preventDefault(); // Prevent the context menu from appearing
         setIsPanning(true);
@@ -1101,7 +1102,7 @@ const Canvas: React.FC = () => {
       
       if (e.target === stageRef.current) {
         setShowMouseInfo(true);
-        setMouseCoords({ x: pos.x, y: pos.y });
+        setMouseCoords({ x: pos.x, y: pos.y });        
       } else {
         setShowMouseInfo(false);
       }
@@ -1145,24 +1146,9 @@ const Canvas: React.FC = () => {
       });
       
       setSelectedIds(selected.map((shape) => shape.id));
-
     }
-
   };
-
-
-
-  useEffect(() => {
-    const transformer = transformerRef.current;
-    if (transformer) {
-      const nodes = selectedIds
-        .map((id) => layerRef.current?.findOne<Konva.Rect>(`#${id}`))
-        .filter(Boolean) as Konva.Node[];
-      transformer.nodes(nodes);
-      transformer.getLayer()?.batchDraw();
-    }
-  }, [selectedIds]);
-
+  
   const handleShapeClick = (
     e: Konva.KonvaEventObject<MouseEvent>,
     id: string
@@ -1531,7 +1517,7 @@ const Canvas: React.FC = () => {
       const newShapes = shapes.filter(
         (shape) => !selectedIds.includes(shape.id)
       );
-
+      setGuides([]);
       // Update the shapes state
       setShapes(newShapes);
 
@@ -1727,11 +1713,6 @@ const Canvas: React.FC = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onContextMenu={handleContextMenu} // Prevents default context menu
-          onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
-            if (e.key === "Delete") {
-              deleteSelectedShapes();
-            }
-          }}
           onClick={onClickTap}
           onTap={onClickTap}
         >
@@ -1987,12 +1968,12 @@ const Canvas: React.FC = () => {
                   key={`guide-${index}`}
                   points={
                     guide.orientation === "V"
-                      ? [guide.lineGuide, -6000, guide.lineGuide, 6000]
-                      : [-6000, guide.lineGuide, 6000, guide.lineGuide]
+                      ? [(guide.lineGuide - stagePos.x) / stageScale, -6000,(guide.lineGuide - stagePos.x) / stageScale, 6000]
+                      : [-6000, (guide.lineGuide - stagePos.y) / stageScale, 6000, (guide.lineGuide - stagePos.y) / stageScale]
                   }
                   stroke="rgb(0, 161, 255)"
-                  strokeWidth={1}
-                  dash={[4, 6]}
+                  strokeWidth={1/ stageScale}
+                  dash={[4/ stageScale, 6/ stageScale]}
                 />
               ))}
 

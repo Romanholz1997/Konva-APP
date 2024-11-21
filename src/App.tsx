@@ -1,7 +1,7 @@
 import React from "react";
 import Sidebar from "./components/Canvas/Sidebar";
 import Canvas from "./components/Canvas/Canvas";
-import Select from "./components/Canvas/Select";
+// import Select from "./components/Canvas/Select";
 const App: React.FC = () => {
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,

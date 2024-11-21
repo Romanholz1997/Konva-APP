@@ -1,33 +1,25 @@
 
-import React, { useState, useRef } from 'react';
-import { Stage, Layer, Rect, Group } from 'react-konva';
-import { KonvaEventObject } from "konva/lib/Node";
+import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAlignLeft, faAlignRight, faArrowAltCircleUp, faArrowAltCircleDown, faTrash, faArrowsAltH, faArrowsAltV, faGripLines } from '@fortawesome/free-solid-svg-icons';
 
 interface CustomRightMenu {
     menuPosition: {x:  number, y: number};
+    snapEnabled:boolean;
     onClose: () => void;
-    // onAlignLeft: () => void;
     alignShapes: (alignment:  'left' | 'right' | 'top' | 'bottom') => void;
     DistributeShapes: (direction: 'horizontal' | 'vertical') => void;
-    // snapShapes: () => void;
-    // setMenuPosition: (position: { x: number; y: number } | null) => void;
     handleDelete: () => void;
     flipSelectedShapesVertically: () => void;
     flipSelectedShapesHorizontally: () => void;
     toggleSnap: ()=> void;
-    snapEnabled:boolean;
 }
 const RightContext: React.FC<CustomRightMenu> = ({
     menuPosition,
     snapEnabled,
     onClose,
     alignShapes,
-    // alignShapes,
     DistributeShapes,
-    // snapShapes,
-    // setMenuPosition,
     handleDelete,
     flipSelectedShapesVertically,
     flipSelectedShapesHorizontally,
