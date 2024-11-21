@@ -58,7 +58,7 @@ const RightBar: React.FC<CustomRightMenu> = ({
               <input
                   type="number"
                   name="groupX"
-                  value={groupPosition.x}
+                  value={Math.round(groupPosition.x)}
                   onChange={handleGroupPositionChange}
                   style={{
                   width: '100%',
@@ -75,7 +75,7 @@ const RightBar: React.FC<CustomRightMenu> = ({
               <input
                   type="number"
                   name="groupY"
-                  value={groupPosition.y}
+                  value={Math.round(groupPosition.y)}
                   onChange={handleGroupPositionChange}
                   style={{
                   width: '100%',

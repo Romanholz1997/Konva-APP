@@ -1148,7 +1148,7 @@ const Canvas: React.FC = () => {
       setSelectedIds(selected.map((shape) => shape.id));
     }
   };
-  
+
   const handleShapeClick = (
     e: Konva.KonvaEventObject<MouseEvent>,
     id: string
@@ -1621,8 +1621,8 @@ const Canvas: React.FC = () => {
   
     // Update group position
     setGroupPosition((prevGroupPosition) => ({
-      x: name === 'groupX' ? newValue : prevGroupPosition!.x,
-      y: name === 'groupY' ? newValue : prevGroupPosition!.y,
+      x: name === 'groupX' ? Math.round(newValue) : Math.round(prevGroupPosition!.x),
+      y: name === 'groupY' ? Math.round(newValue) : Math.round(prevGroupPosition!.y),
     }));
   };
 
@@ -1681,7 +1681,7 @@ const Canvas: React.FC = () => {
       (shape) => hasProperty(shape, propName) && shape[propName] === firstValue
     );
   
-    return isCommon ? firstValue : '';
+    return isCommon ? Math.round(firstValue) : '';
   };
 
   const selectedShapeTypes = Array.from(new Set(editShapes.map((s) => s.type)));
