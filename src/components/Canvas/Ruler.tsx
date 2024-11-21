@@ -6,80 +6,29 @@ const RULER_SIZE = 30;
 const CANVAS_WIDTH = 4000;
 const CANVAS_HEIGHT = 4000;
 
-// Helper function to get a "nice" number for tick spacing
-const niceNumber = (range: number) => {
-  const exponent = Math.floor(Math.log10(range));
-  const fraction = range / Math.pow(10, exponent);
-
-  let niceFraction;
-
-  if (fraction <= 1) {
-    niceFraction = 1;
-  } else if (fraction <= 2) {
-    niceFraction = 2;
-  } else if (fraction <= 5) {
-    niceFraction = 5;
-  } else {
-    niceFraction = 10;
-  }
-
-  return niceFraction * Math.pow(10, exponent);
-};
-
 interface RulerProps {
-  handleTopRulerWheel: React.WheelEventHandler<HTMLDivElement>;
-  handleLeftRulerWheel: React.WheelEventHandler<HTMLDivElement>;
-  scrollOffsetX: number;
-  scrollOffsetY: number;
   stagePos: { x: number; y: number };
   stageScale: number;
 }
 
 const Ruler: React.FC<RulerProps> = ({
-  handleTopRulerWheel,
-  handleLeftRulerWheel,
-  scrollOffsetX,
-  scrollOffsetY,
   stagePos,
   stageScale,
 }) => {
   const renderRulerMarks = (isHorizontal: boolean) => {
-    const length = isHorizontal ? CANVAS_WIDTH : CANVAS_HEIGHT;
     const offset = isHorizontal ? stagePos.x : stagePos.y ;
-    const offsetScroll = isHorizontal ? scrollOffsetX : scrollOffsetY ;
-
-    // Minimum pixel spacing between ticks
-    const minPixelSpacing = 100;
-
     // Pixels per unit at the current scale
     const pixelsPerUnit = stageScale * 10;
-
-    // Units per tick, adjusted to a "nice" number
-    const unitsPerTick = niceNumber(minPixelSpacing / pixelsPerUnit);
-
-    // Start and end units for the loop
-    // const startUnit =
-    //   Math.floor(offset / (pixelsPerUnit * unitsPerTick)) * unitsPerTick;
-    const endUnit =
-      Math.ceil((offset + length) / (pixelsPerUnit * unitsPerTick)) *
-      unitsPerTick;
-
-
-    const marks = [];
-    let startValue = 0;
-    if(offset > 0)
-    {
-      startValue = -Math.round(offset);
-    }    
+    const marks = [];   
     for (let unit = 0; unit <= 400; unit += 1) {
       let position = 0
       if(offset > 0)
       {
-        position = unit * pixelsPerUnit - offsetScroll;
+        position = unit * pixelsPerUnit;
       }
       else
       {
-        position = unit * pixelsPerUnit + offset - offsetScroll;
+        position = unit * pixelsPerUnit + offset;
       }
       // Determine if it's a major tick (you can add logic for minor ticks if needed)
       let isMajorTick = false;
@@ -129,7 +78,8 @@ const Ruler: React.FC<RulerProps> = ({
   return (
     <>
       {/* Top Ruler */}
-      <div className="ruler top-ruler" onWheel={handleTopRulerWheel}>
+      {/* <div className="ruler top-ruler" onWheel={handleTopRulerWheel}> */}
+      <div className="ruler top-ruler">
         <Stage
           width={CANVAS_WIDTH}
           height={RULER_SIZE}
@@ -141,7 +91,8 @@ const Ruler: React.FC<RulerProps> = ({
       </div>
 
       {/* Left Ruler */}
-      <div className="ruler left-ruler" onWheel={handleLeftRulerWheel}>
+      <div className="ruler left-ruler">
+      {/* <div className="ruler left-ruler" onWheel={handleLeftRulerWheel}> */}
         <Stage
           width={RULER_SIZE}
           height={CANVAS_HEIGHT}

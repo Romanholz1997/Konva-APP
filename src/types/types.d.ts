@@ -1,42 +1,81 @@
 // src/types.ts
 
-export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs;
+// export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs;
+// export type ShapePropertyKey = keyof RectangleAttrs | keyof CircleAttrs | keyof StarAttrs | keyof SVGAttrs;
+// export interface RectangleAttrs {
+//   id: string;
+//   type: "rectangle";
+//   x: number;
+//   y: number;
+//   width: number;
+//   height: number;
+//   fill: string;
+//   rotation: number;
+// }
+
+// export interface SVGAttrs {
+//   id: string;
+//   type: "SVG";
+//   image: HTMLImageElement | null;
+//   x: number;
+//   y: number;
+//   width: number;
+//   height: number;
+//   rotation: number;
+// }
+
+// export interface CircleAttrs {
+//   id: string;
+//   type: "circle";
+//   x: number;
+//   y: number;
+//   radius: number;
+//   fill: string;
+//   rotation: number;
+// }
+
+// export interface StarAttrs {
+//   id: string;
+//   type: "star";
+//   x: number;
+//   y: number;
+//   numPoints: number;
+//   innerRadius: number;
+//   outerRadius: number;
+//   fill: string;
+//   rotation: number;
+// }
+
+// src/types/types.ts
 
 export interface RectangleAttrs {
   id: string;
-  type: "rectangle";
+  type: 'rectangle';
   x: number;
   y: number;
   width: number;
   height: number;
   fill: string;
   rotation: number;
-}
-
-export interface SVGAttrs {
-  id: string;
-  type: "SVG";
-  image: HTMLImageElement | null;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
+  scaleY:number;
+  scaleX:number;
 }
 
 export interface CircleAttrs {
   id: string;
-  type: "circle";
+  type: 'circle';
   x: number;
   y: number;
   radius: number;
   fill: string;
   rotation: number;
+  scaleY:number;
+  scaleX:number;
 }
 
 export interface StarAttrs {
   id: string;
-  type: "star";
+  type: 'star';
   x: number;
   y: number;
   numPoints: number;
@@ -44,7 +83,31 @@ export interface StarAttrs {
   outerRadius: number;
   fill: string;
   rotation: number;
+  scaleY:number;
+  scaleX:number;
 }
+
+export interface SVGAttrs {
+  id: string;
+  type: 'SVG';
+  image: HTMLImageElement | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  scaleY:number;
+  scaleX:number;
+}
+
+export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs;
+
+// Define ShapePropertyKey to include all possible keys from different shapes
+export type ShapePropertyKey =
+  | keyof RectangleAttrs
+  | keyof CircleAttrs
+  | keyof StarAttrs
+  | keyof SVGAttrs;
 
 export interface SVGProps {
   shapeProps: SVGAttrs;
