@@ -195,7 +195,7 @@ const RightBar: React.FC<CustomRightMenu> = ({
               <input
                 type="number"
                 name="outerRadius"
-                value={getCommonProperty('outerRadius') as number || ''}
+                value={getCommonProperty('radius') as number || ''}
                 onChange={handleInputChange}
                 style={{
                   width: '100%',

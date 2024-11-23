@@ -80,7 +80,7 @@ export interface StarAttrs {
   y: number;
   numPoints: number;
   innerRadius: number;
-  outerRadius: number;
+  radius: number;
   fill: string;
   rotation: number;
   scaleY:number;

@@ -16,6 +16,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Ruler from "./Ruler";
+import Grid from "./Grid";
 import {
   Shape,
   ShapePropertyKey,
@@ -59,7 +60,7 @@ interface Guide {
 
 const CANVAS_WIDTH = 4000;
 const CANVAS_HEIGHT = 4000;
-
+const GRID_SIZE = 10; // Change grid size dynamically here
 interface Radii {
   innerRadius: number;
   outerRadius: number;
@@ -121,6 +122,19 @@ const Canvas: React.FC = () => {
   const layerRef = useRef<Konva.Layer>(null);
 
   const [showMouseInfo, setShowMouseInfo] = useState(false);
+  const [crossFair, setCrossFair] = useState(true);
+
+  const HandleCrossFair = () =>{
+    setCrossFair((prev) => !prev);
+  }
+
+  const [gridLine, setSridLine] = useState(true);
+
+  const HandleGridLine = () =>{
+    setSridLine((prev) => !prev);
+  }
+    
+    
 
   const [isPanning, setIsPanning] = useState(false);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
@@ -373,6 +387,24 @@ const Canvas: React.FC = () => {
     };
   };
 
+  const handleJsonChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        try {
+          const jsonData = JSON.parse(event.target?.result as string);
+          console.log("Imported JSON:", jsonData);
+          setShapes(jsonData.shapes || []); // Assuming shapes are under `shapes` key
+        } catch (error) {
+          console.error("Invalid JSON file:", error);
+        }
+      };
+
+      reader.readAsText(file);
+    }
+  };
 
   useEffect(() => {
     if (svgContent) {
@@ -458,7 +490,7 @@ const Canvas: React.FC = () => {
           y: radii.centerY,
           numPoints:5,
           innerRadius: radii.innerRadius,
-          outerRadius: radii.outerRadius,
+          radius: radii.outerRadius,
           rotation: rotation,
           fill:fill,
           scaleX:scaleX,
@@ -570,7 +602,7 @@ const Canvas: React.FC = () => {
               shape.y,
               shape.numPoints || 5,
               shape.innerRadius || 10,
-              shape.outerRadius || 20
+              shape.radius || 20
             );
             return Promise.resolve(
               `<polygon points="${starPoints}" fill="${shape.fill}" transform="rotate(${rotationStar}, ${shape.x}, ${shape.y})"/>`
@@ -703,8 +735,13 @@ const Canvas: React.FC = () => {
     if (!stage) return;
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
-    const x = (pointer.x + 25) ;
-    const y = (pointer.y + 10) ;
+    const menuWidth = 200; // Approximate width of the menu
+    const menuHeight = 390; // Approximate height of the menu
+  
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const x = (pointer.x + 25) + menuWidth > viewportWidth ? (pointer.x - 25) - menuWidth : (pointer.x + 25);
+    const y = (pointer.y + 10) + menuHeight > viewportHeight ? (pointer.y + 30) - menuHeight : (pointer.y + 10);
     // Check if the rectangle is among the selected rectangles
     if (selectedIds.includes(e.target.id())) {
       setMenuPos({ x, y });
@@ -1118,7 +1155,7 @@ const Canvas: React.FC = () => {
     }
   };
 
-  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {  
     if (isPanning) {
       setIsPanning(false);
     }
@@ -1146,8 +1183,23 @@ const Canvas: React.FC = () => {
       });
       
       setSelectedIds(selected.map((shape) => shape.id));
+
     }
+
   };
+
+
+
+  useEffect(() => {
+    const transformer = transformerRef.current;
+    if (transformer) {
+      const nodes = selectedIds
+        .map((id) => layerRef.current?.findOne<Konva.Rect>(`#${id}`))
+        .filter(Boolean) as Konva.Node[];
+      transformer.nodes(nodes);
+      transformer.getLayer()?.batchDraw();
+    }
+  }, [selectedIds]);
 
   const handleShapeClick = (
     e: Konva.KonvaEventObject<MouseEvent>,
@@ -1233,7 +1285,7 @@ const Canvas: React.FC = () => {
             rotation,
             numPoints:shape.numPoints,
             innerRadius: Math.max(5, Math.abs(shape.innerRadius * avgScale)),
-            outerRadius: Math.max(5, Math.abs(shape.outerRadius * avgScale)),
+            outerRadius: Math.max(5, Math.abs(shape.radius * avgScale)),
             scaleX:shape.scaleX,
             scaleY:shape.scaleY
           };
@@ -1290,7 +1342,7 @@ const Canvas: React.FC = () => {
     const { x, y, width, height, rotation } = rect;
 
     // Translate point to rectangle's local coordinate system
-    const translatedX = px - x;
+    const translatedX = px - x ;
     const translatedY = py - y;
 
     // Convert rotation to radians and negate for inverse rotation
@@ -1310,6 +1362,10 @@ const Canvas: React.FC = () => {
     return shapes.some((shape) => {
       if (shape.type === "rectangle") {
         const rect = shape as RectangleAttrs;
+        return (
+          x >= rect.x-rect.width/2 && x< rect.x + rect.width/2 &&
+          y>= rect.y -rect.height/2 && y< rect.y + rect.height/2
+        )
         return isPointInRotatedRect(x, y, rect);
       } else if (shape.type === "circle") {
         const circle = shape as CircleAttrs;
@@ -1318,14 +1374,18 @@ const Canvas: React.FC = () => {
         return Math.sqrt(dx * dx + dy * dy) <= circle.radius;
       } else if(shape.type === "SVG"){
         const svg = shape as SVGAttrs;
+        return (
+          x >= svg.x - svg.width/2 && x< svg.x + svg.width/2 &&
+          y >= svg.y - svg.height/2 && y< svg.y + svg.height/2
+        )
         return isPointInRotatedSVG(x, y, svg);
       } else if (shape.type === "star") {
         const star = shape as StarAttrs;
         return (
-          x >= star.x - star.outerRadius &&
-          x <= star.x + star.outerRadius &&
-          y >= star.y - star.outerRadius &&
-          y <= star.y + star.outerRadius
+          x >= star.x - star.radius &&
+          x <= star.x + star.radius &&
+          y >= star.y - star.radius &&
+          y <= star.y + star.radius
         );
       }
       // Add checks for other shape types if necessary
@@ -1370,8 +1430,8 @@ const Canvas: React.FC = () => {
           newShape = {
             id: "rectangle_" + nextId,
             type: "rectangle",
-            x: pointer.x - 50,
-            y: pointer.y - 50,
+            x: pointer.x,
+            y: pointer.y,
             width: 100,
             height: 100,
             fill: "#0000ff",
@@ -1401,7 +1461,7 @@ const Canvas: React.FC = () => {
             y: pointer.y,
             numPoints: 5,
             innerRadius: 30,
-            outerRadius: 50,
+            radius: 50,
             fill: "#aaaa33",
             rotation: 0, // Initialize rotation
             scaleX:1,
@@ -1415,8 +1475,8 @@ const Canvas: React.FC = () => {
             id: "ball_" + nextId,
             image: img,
             type: "SVG",
-            x: pointer.x - 50, 
-            y: pointer.y - 50,
+            x: pointer.x, 
+            y: pointer.y,
             width: 100,
             height: 100,
             rotation: 0,
@@ -1457,57 +1517,71 @@ const Canvas: React.FC = () => {
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
     const newShapes = shapes.map((shape) => {
       if (shape.id === id) {
+        const newPos = snapToGrid({ x: e.target.x(), y: e.target.y() });
         return {
           ...shape,
-          x: e.target.x(),
-          y: e.target.y(),
+          x: snapEnabled? newPos.x : e.target.x(),
+          y: snapEnabled? newPos.y : e.target.y(),
         };
       }
       return shape;
     });
     setShapes(newShapes);
   };
+  const snapToGrid = (pos: { x: number; y: number }) => {
+    const snappedX = Math.round(pos.x / GRID_SIZE) * GRID_SIZE;
+    const snappedY = Math.round(pos.y / GRID_SIZE) * GRID_SIZE;
+    return { x: snappedX, y: snappedY };
+  };
 
-  const onDragMove = useCallback(
-    (e: Konva.KonvaEventObject<DragEvent>) => {
-      if (!snapEnabled) {
-        // If snapping is disabled, ensure no guides are shown
-        setGuides([]);
-        return;
-      }
-      const shape = e.target as Konva.Shape;
-      const layer = shape.getLayer();
-      if (!layer) return; // Ensure layer is not null
+  const onDragMove = (e: any, id: string) => {
+    const shape = e.target;
+    const newPos = snapToGrid({ x: shape.x(), y: shape.y() });
 
-      // Get snapping guide stops
-      const lineGuideStops = getLineGuideStops(shape);
+    setShapes((prevShapes) =>
+      prevShapes.map((s) => (s.id === id ? { ...s, ...newPos } : s))
+    );
+  };
+  // const onDragMove = useCallback(
+  //   (e: Konva.KonvaEventObject<DragEvent>) => {
+  //     if (!snapEnabled) {
+  //       // If snapping is disabled, ensure no guides are shown
+  //       setGuides([]);
+  //       return;
+  //     }
+  //     const shape = e.target as Konva.Shape;
+  //     const layer = shape.getLayer();
+  //     if (!layer) return; // Ensure layer is not null
 
-      // Get current shape's snapping edges
-      const itemBounds = getObjectSnappingEdges(shape);
+  //     // Get snapping guide stops
+  //     const lineGuideStops = getLineGuideStops(shape);
 
-      // Get guides based on proximity
-      const newGuides = getGuides(lineGuideStops, itemBounds);
+  //     // Get current shape's snapping edges
+  //     const itemBounds = getObjectSnappingEdges(shape);
 
-      if (newGuides.length) {
-        setGuides(newGuides);
+  //     // Get guides based on proximity
+  //     const newGuides = getGuides(lineGuideStops, itemBounds);
 
-        const absPos = shape.absolutePosition();
+  //     if (newGuides.length) {
+  //       setGuides(newGuides);
 
-        newGuides.forEach((lg) => {
-          if (lg.orientation === "V") {
-            absPos.x = lg.lineGuide + lg.offset;
-          } else if (lg.orientation === "H") {
-            absPos.y = lg.lineGuide + lg.offset;
-          }
-        });
+  //       const absPos = shape.absolutePosition();
 
-        shape.absolutePosition(absPos);
-      } else {
-        setGuides([]);
-      }
-    },
-    [getGuides, getLineGuideStops, getObjectSnappingEdges, snapEnabled]
-  );
+  //       newGuides.forEach((lg) => {
+  //         if (lg.orientation === "V") {
+  //           absPos.x = lg.lineGuide + lg.offset;
+  //         } else if (lg.orientation === "H") {
+  //           absPos.y = lg.lineGuide + lg.offset;
+  //         }
+  //       });
+
+  //       shape.absolutePosition(absPos);
+  //     } else {
+  //       setGuides([]);
+  //     }
+  //   },
+  //   [getGuides, getLineGuideStops, getObjectSnappingEdges, snapEnabled]
+  // );
 
   ////
   //--------------delete shape-------------------------
@@ -1531,6 +1605,13 @@ const Canvas: React.FC = () => {
         // Call the function to delete selected shapes
         deleteSelectedShapes();
       }
+      if (e.key === "Control" && selectedIds.length > 0) {
+        setShapes((prevShapes) =>
+          prevShapes.map((shape) =>
+            selectedIds.includes(shape.id) ? { ...shape, rotation: 0 } : shape
+          )
+        );
+      }
     };
 
     // Add event listener to the window object
@@ -1541,6 +1622,104 @@ const Canvas: React.FC = () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [selectedIds, shapes]);
+
+  const isOverlap = (shape1: Shape, shape2: Shape): boolean => {
+    if (shape1.type === "rectangle" && shape2.type === "rectangle" || shape1.type === "SVG" && shape2.type === "SVG" ||shape1.type === "SVG" && shape2.type === "rectangle" || shape1.type === "rectangle" && shape2.type === "SVG") {
+      return !(
+        shape1.x + (shape1.width || 0) <= shape2.x ||
+        shape2.x + (shape2.width || 0) <= shape1.x ||
+        shape1.y + (shape1.height || 0) <= shape2.y ||
+        shape2.y + (shape2.height || 0) <= shape1.y
+      );
+    }
+
+    if (shape1.type === "circle" && shape2.type === "circle" || shape1.type === "star" && shape2.type === "star" ||shape1.type === "star" && shape2.type === "circle" || shape1.type === "circle" && shape2.type === "star") {
+      const dx = shape1.x - shape2.x;
+      const dy = shape1.y - shape2.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance < (shape1.radius || 0) + (shape2.radius || 0);
+    }
+
+    if (shape1.type === "circle" && shape2.type === "rectangle" || shape1.type === "circle" && shape2.type === "SVG" ||  shape1.type === "star" && shape2.type === "rectangle"  || shape1.type === "star" && shape2.type === "SVG") {
+      const rectLeft = shape2.x - (shape2.width || 0) / 2;
+      const rectRight = shape2.x + (shape2.width || 0) / 2;
+      const rectTop = shape2.y - (shape2.height || 0) / 2;
+      const rectBottom = shape2.y + (shape2.height || 0) / 2;
+      
+      // Clamp the circle's center to the rectangle's bounds
+      const closestX = Math.max(rectLeft, Math.min(shape1.x, rectRight));
+      const closestY = Math.max(rectTop, Math.min(shape1.y, rectBottom));
+      
+      // Calculate the distance from the circle's center to the closest point
+      const dx = shape1.x - closestX;
+      const dy = shape1.y - closestY;
+      
+      // Check if the distance is less than the circle's radius
+      return dx * dx + dy * dy < (shape1.radius || 0) * (shape1.radius || 0);
+    }
+    if (shape1.type === "rectangle" && shape2.type === "circle" || shape1.type === "rectangle" && shape2.type === "star" || shape1.type === "SVG" && shape2.type === "circle" || shape1.type === "SVG" && shape2.type === "star") {
+      return isOverlap(shape2, shape1);
+    }
+    return false;
+  };
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedIds.length === 0) return;
+
+      setShapes((prevShapes) => {
+        return prevShapes.map((shape) => {
+          if (!selectedIds.includes(shape.id)) return shape;
+
+          // Calculate new position based on key
+          let newX = shape.x;
+          let newY = shape.y;
+
+          if (e.key === "ArrowLeft") newX -= 10;
+          if (e.key === "ArrowRight") newX += 10;
+          if (e.key === "ArrowUp") newY -= 10;
+          if (e.key === "ArrowDown") newY += 10;
+
+          // Boundary checks
+          if (shape.type === "rectangle" || shape.type === "SVG") {
+            const halfWidth = (shape.width || 0) / 2;
+            const halfHeight = (shape.height || 0) / 2;
+          
+            // Adjust boundaries to account for the offset
+            newX = Math.max(halfWidth, Math.min(CANVAS_WIDTH - halfWidth, newX));
+            newY = Math.max(halfHeight, Math.min(CANVAS_HEIGHT - halfHeight, newY));
+          } else if (shape.type === "circle" ) {
+            const radius = shape.radius || 0;
+            newX = Math.max(radius, Math.min(CANVAS_WIDTH - radius, newX));
+            newY = Math.max(radius, Math.min(CANVAS_HEIGHT - radius, newY));
+          }
+          else if(shape.type === "star" ) {
+            const radius = shape.radius || 0;
+            newX = Math.max(radius, Math.min(CANVAS_WIDTH - radius, newX));
+            newY = Math.max(radius, Math.min(CANVAS_HEIGHT - radius, newY));
+          }
+
+          // Collision detection
+          const isColliding = prevShapes.some(
+            (other) =>
+              other.id !== shape.id &&
+              isOverlap(
+                { ...shape, x: newX, y: newY },
+                other
+              )
+          );
+
+          if (isColliding) {
+            return shape; // Prevent movement
+          }
+
+          return { ...shape, x: newX, y: newY };
+        });
+      });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedIds]);
   //--------------delete shape-------------------------
   ////
 
@@ -1621,8 +1800,8 @@ const Canvas: React.FC = () => {
   
     // Update group position
     setGroupPosition((prevGroupPosition) => ({
-      x: name === 'groupX' ? Math.round(newValue) : Math.round(prevGroupPosition!.x),
-      y: name === 'groupY' ? Math.round(newValue) : Math.round(prevGroupPosition!.y),
+      x: name === 'groupX' ? newValue : prevGroupPosition!.x,
+      y: name === 'groupY' ? newValue : prevGroupPosition!.y,
     }));
   };
 
@@ -1680,8 +1859,13 @@ const Canvas: React.FC = () => {
     const isCommon = editShapes.every(
       (shape) => hasProperty(shape, propName) && shape[propName] === firstValue
     );
-  
-    return isCommon ? Math.round(firstValue) : '';
+    if(propName == 'fill'){
+      return isCommon ? firstValue : '';
+    }
+    else{
+      return isCommon ? Math.round(firstValue) : '';
+    }
+    
   };
 
   const selectedShapeTypes = Array.from(new Set(editShapes.map((s) => s.type)));
@@ -1716,6 +1900,7 @@ const Canvas: React.FC = () => {
           onClick={onClickTap}
           onTap={onClickTap}
         >
+          
           <Layer
             listening={false}
           >
@@ -1730,6 +1915,10 @@ const Canvas: React.FC = () => {
               />
             )}
           </Layer>
+          { gridLine && (
+            <Grid width={CANVAS_WIDTH} height={CANVAS_WIDTH} cellSize={GRID_SIZE} />
+          )}
+          
           <Layer ref={layerRef}>
             {shapes.map((shape) => {
               if (shape.type === "rectangle") {
@@ -1743,10 +1932,10 @@ const Canvas: React.FC = () => {
                     const xOffset = stagePos.x;
                     const yOffset = stagePos.y;
                       // Calculate the visible area in stage coordinates
-                    const minX = xOffset * scale;
-                    const minY = yOffset * scale;
-                    const maxX = (CANVAS_WIDTH -  rect.width) * scale  + stagePos.x;
-                    const maxY = (CANVAS_WIDTH -  rect.width) * scale  + stagePos.y;  
+                    const minX = (xOffset + rect.width/2) * scale;
+                    const minY = (yOffset + rect.height/2) * scale;
+                    const maxX = (CANVAS_WIDTH -  rect.width/2) * scale  + stagePos.x;
+                    const maxY = (CANVAS_WIDTH -  rect.width/2) * scale  + stagePos.y;  
                     // const maxX = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta)) * scale  + stagePos.x;
                     // const maxY = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta) ) * scale  + stagePos.y;  
                     // Constrain the position
@@ -1772,8 +1961,8 @@ const Canvas: React.FC = () => {
                     rotation={rect.rotation}
                     onShapeClick={(e) => handleShapeClick(e, rect.id)}
                     // Remove onTransformEnd from individual shapes
-                    onDragMove={onDragMove}
-                    onDragEnd={(e) => handleDragEnd(e, rect.id)}
+                    onDragMove={() => (null)}
+                    onDragEnd={(e) => handleDragEnd(e, shape.id)}
                     dragBoundFunc={dragBoundFunc}
                     onDblClick={handleDoubleClick}
                     onShapeMouseEnter={onShapeMouseEnter}
@@ -1786,21 +1975,17 @@ const Canvas: React.FC = () => {
                 const svg = shape as SVGAttrs;
                 const dragBoundFunc = (pos: { x: number; y: number }) => {
                   const stage = stageRef.current;
-                  if (stage) {
-                    // Get the size of the visible area
-                    const stageWidth = stage.width();
-                    const stageHeight = stage.height();
-  
+                  if (stage) {  
                     // Adjust for scaling and panning
                     const scale = stageScale;
                     const xOffset = stagePos.x;
                     const yOffset = stagePos.y;
   
                     // Calculate the visible area in stage coordinates
-                    const minX = (xOffset) * scale;
-                    const minY = (yOffset) * scale;
-                    const maxX = (stageWidth -svg.width) * scale   + stagePos.x;
-                    const maxY = (stageHeight-svg.height) * scale   + stagePos.x;
+                    const minX = (xOffset + svg.width/2) * scale;
+                    const minY = (yOffset + svg.height/2) * scale;
+                    const maxX = (CANVAS_WIDTH -  svg.width/2) * scale  + stagePos.x;
+                    const maxY = (CANVAS_WIDTH -  svg.width/2) * scale  + stagePos.y;  
   
                     // Constrain the position
                     let x = pos.x;
@@ -1827,7 +2012,7 @@ const Canvas: React.FC = () => {
                       rotation={svg.rotation}
                       onShapeClick={(e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, svg.id)}
                       // // Remove onTransformEnd from individual shapes
-                      onDragMove={onDragMove}
+                      onDragMove={() => (null)}
                       onDragEnd={(e) => handleDragEnd(e, svg.id)}
                       dragBoundFunc={dragBoundFunc}
                       onDblClick={handleDoubleClick}
@@ -1880,7 +2065,7 @@ const Canvas: React.FC = () => {
                     scaleY={circle.scaleY}
                     onShapeClick={(e) => handleShapeClick(e, circle.id)}
                     // Remove onTransformEnd from individual shapes
-                    onDragMove={onDragMove}
+                    onDragMove={() => (null)}
                     onDragEnd={(e) => handleDragEnd(e, circle.id)}
                     dragBoundFunc={dragBoundFunc}
                     onDblClick={handleDoubleClick}
@@ -1903,10 +2088,10 @@ const Canvas: React.FC = () => {
                     const yOffset = stagePos.y;
   
                     // Calculate the visible area in stage coordinates
-                    const minX = (xOffset + star.outerRadius) * scale;
-                    const minY = (yOffset + star.outerRadius) * scale;
-                    const maxX = (stageWidth - star.outerRadius) * scale   + stagePos.x;
-                    const maxY = (stageHeight  - star.outerRadius) * scale  + stagePos.x;
+                    const minX = (xOffset + star.radius) * scale;
+                    const minY = (yOffset + star.radius) * scale;
+                    const maxX = (stageWidth - star.radius) * scale   + stagePos.x;
+                    const maxY = (stageHeight  - star.radius) * scale  + stagePos.x;
   
                     // Constrain the position
                     let x = pos.x;
@@ -1926,14 +2111,14 @@ const Canvas: React.FC = () => {
                     y={star.y}
                     numPoints={star.numPoints}
                     innerRadius={star.innerRadius}
-                    outerRadius={star.outerRadius}
+                    outerRadius={star.radius}
                     fill={star.fill}
                     rotation={star.rotation}
                     scaleX={star.scaleX}
                     scaleY={star.scaleY}
                     onShapeClick={(e) => handleShapeClick(e, star.id)}
                     // Remove onTransformEnd from individual shapes
-                    onDragMove={onDragMove}
+                    onDragMove={() => (null)}
                     onDragEnd={(e) => handleDragEnd(e, star.id)}
                     dragBoundFunc={dragBoundFunc}
                     onDblClick={handleDoubleClick}
@@ -2007,7 +2192,7 @@ const Canvas: React.FC = () => {
             )}
           </Layer>
           <Layer>
-          {showMouseInfo && (
+          {crossFair && showMouseInfo && (
               <>
                 {/* Display Mouse Coordinates */}
                 <Text
@@ -2059,6 +2244,11 @@ const Canvas: React.FC = () => {
               flipSelectedShapesHorizontally={flipSelectedShapesHorizontally}
               toggleSnap={toggleSnap}
               snapEnabled={snapEnabled}
+              handleCrossFair={HandleCrossFair}
+              isCrossFair={crossFair}
+              handleGridLine={HandleGridLine}
+              gridLine={gridLine}
+
             />
         )}
       </div>
@@ -2123,6 +2313,32 @@ const Canvas: React.FC = () => {
               display: "none", // Hide the default file input
             }}
             onChange={handleFileChange} 
+          />
+        </label>
+        <label
+          style={{
+            display: "inline-block",
+            marginLeft: "10px",
+            cursor: "pointer",
+            backgroundColor: "#4CAF50",
+            color: "white",
+            padding: "10px 15px",
+            borderRadius: "5px",
+            fontSize: "15px",
+            textAlign: "center",
+            transition: "background-color 0.3s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#45a049")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#4CAF50")}
+        >
+          Upload Json
+          <input
+            type="file"
+            accept=".json"
+            style={{
+              display: "none", // Hide the default file input
+            }}
+            onChange={handleJsonChange} 
           />
         </label>
       </div>
