@@ -726,11 +726,11 @@ const Canvas: React.FC = () => {
   const handleContextMenu = (e: KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
 
-    if (!e.target.hasName('object')) {
-      // Right-clicked on a free area or non-rectangle shape
+    // if (!e.target.hasName('object')) {
+    //   // Right-clicked on a free area or non-rectangle shape
 
-      return;
-    }
+    //   return;
+    // }
     const stage = stageRef.current;
     if (!stage) return;
     const pointer = stage.getPointerPosition();
@@ -743,13 +743,14 @@ const Canvas: React.FC = () => {
     const x = (pointer.x + 25) + menuWidth > viewportWidth ? (pointer.x - 25) - menuWidth : (pointer.x + 25);
     const y = (pointer.y + 10) + menuHeight > viewportHeight ? (pointer.y + 30) - menuHeight : (pointer.y + 10);
     // Check if the rectangle is among the selected rectangles
-    if (selectedIds.includes(e.target.id())) {
-      setMenuPos({ x, y });
-    } else {
-      // Optionally select the rectangle on right-click
-      setSelectedIds([e.target.id()]);
-      setMenuPos({ x, y });
-    }
+    setMenuPos({ x, y });
+    // if (selectedIds.includes(e.target.id())) {
+    //   setMenuPos({ x, y });
+    // } else {
+    //   // Optionally select the rectangle on right-click
+    //   setSelectedIds([e.target.id()]);
+    //   setMenuPos({ x, y });
+    // }
   };
 
   const handleCloseMenu = () => {
@@ -1092,7 +1093,7 @@ const Canvas: React.FC = () => {
       }  
       else{
         const pos = e.target.getStage()?.getPointerPosition();
-        if (pos) {
+        if (pos) {          
           selection.current.visible = true;
           selection.current.x1 = stagePos.x > 0 ?(pos.x) / stageScale: (pos.x - stagePos.x) / stageScale;
           selection.current.y1 = stagePos.y > 0 ?(pos.y) / stageScale:(pos.y - stagePos.y) / stageScale;
@@ -1165,28 +1166,73 @@ const Canvas: React.FC = () => {
       updateSelectionRect();
 
       const { x1, y1, x2, y2 } = selection.current;
+      
       const moved = x1 !== x2 || y1 !== y2;
       if (!moved) {
         return;
-      }
+      }     
       const selBox = selectionRectRef.current?.getClientRect();
-
       if (!selBox || !layerRef.current) {
         return;
       }
       const selected = shapes.filter((shape) => {
         const shapeNode = layerRef.current?.findOne<Konva.Rect>(`#${shape.id}`);
-        if (shapeNode) {
-          return Konva.Util.haveIntersection(selBox, shapeNode.getClientRect());
+        if (shapeNode) {          
+          return Konva.Util.haveIntersection(selBox, shapeNode.getClientRect());          
         }
         return false;
       });
       
-      setSelectedIds(selected.map((shape) => shape.id));
+      setSelectedIds(selected.map((shape) => shape.id));     
 
+      if(selected.length > 0)
+      {
+        
+      }
     }
 
   };
+
+  useEffect(() => {
+    const handleKeyUp = (e: MouseEvent) => {
+      if (e.button !== 2) {
+        const layer = layerRef.current;
+        if (!layer) return;
+
+        const selectedShapes = selectedIds
+          .map((id) => layer.findOne<Konva.Rect>('#' + id))
+          .filter((node): node is Konva.Rect => node !== null);
+
+        if (selectedShapes.length < 2) return;
+
+        const clientRects = selectedShapes.map((shape) =>
+          shape.getClientRect({ relativeTo: layer })
+        );
+
+        const minX = Math.min(...clientRects.map((rect) => rect.x));
+        const minY = Math.min(...clientRects.map((rect) => rect.y));
+        const maxX = Math.max(...clientRects.map((rect) => rect.x + rect.width));
+        const maxY = Math.max(...clientRects.map((rect) => rect.y + rect.height));
+
+        toast(`x:${minX}, y:${minY}, width:${maxX - minX}, height:${maxY - minY}`, {
+          position: "top-right",
+          autoClose: 1000, // Change this value to adjust the display duration
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "light",
+        });
+      }
+    };
+
+    window.addEventListener('mouseup', handleKeyUp);
+    
+    // Cleanup function to remove the event listener
+    return () => {
+      window.removeEventListener('mouseup', handleKeyUp);
+    };
+  }, [selectedIds]); // Include layerRef in the dependency array
 
 
 
