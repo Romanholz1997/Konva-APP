@@ -2273,6 +2273,7 @@ const Canvas: React.FC = () => {
         
         {menuPos && (
             <RightContext
+              selectedIds={selectedIds}
               menuPosition={menuPos}
               onClose={handleCloseMenu}
               alignShapes={(alignment) => handleAlign(alignment)}

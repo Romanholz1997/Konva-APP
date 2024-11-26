@@ -29,6 +29,7 @@ interface CustomRightMenu {
   isCrossFair: boolean;
   handleGridLine: () => void;
   gridLine: boolean;
+  selectedIds: string[];
 }
 
 const RightContext: React.FC<CustomRightMenu> = ({
@@ -36,6 +37,7 @@ const RightContext: React.FC<CustomRightMenu> = ({
   snapEnabled,
   isCrossFair,
   gridLine,
+  selectedIds,
   onClose,
   alignShapes,
   DistributeShapes,
@@ -50,6 +52,7 @@ const RightContext: React.FC<CustomRightMenu> = ({
     <ul
       style={{
         position: 'absolute',
+        width:'200px',
         top: menuPosition.y,
         left: menuPosition.x,
         listStyle: 'none',
@@ -60,6 +63,9 @@ const RightContext: React.FC<CustomRightMenu> = ({
       }}
       onMouseLeave={() => onClose()}
     >
+      <li  style={{alignItems: 'center', padding: '5px', cursor: 'pointer' }}>
+        <strong>Selected Shapes:</strong> {selectedIds.join(', ')}
+      </li> 
       <li
         onClick={() => alignShapes('left')}
         style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
