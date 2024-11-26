@@ -1161,7 +1161,8 @@ const Canvas: React.FC = () => {
       setIsPanning(false);
     }
     else{
-
+      if(selection.current.visible === false)
+        return;
       selection.current.visible = false;
       updateSelectionRect();
 
@@ -1187,51 +1188,42 @@ const Canvas: React.FC = () => {
 
       if(selected.length > 0)
       {
-        
+        // showRectangle();
       }
     }
-
   };
+  const showRectangle = () =>{
+    const layer = layerRef.current;
+    if (!layer) return;
 
-  useEffect(() => {
-    const handleKeyUp = (e: MouseEvent) => {
-      if (e.button !== 2) {
-        const layer = layerRef.current;
-        if (!layer) return;
+    const selectedShapes = selectedIds
+      .map((id) => layer.findOne<Konva.Rect>('#' + id))
+      .filter((node): node is Konva.Rect => node !== null);
 
-        const selectedShapes = selectedIds
-          .map((id) => layer.findOne<Konva.Rect>('#' + id))
-          .filter((node): node is Konva.Rect => node !== null);
+    if (selectedShapes.length < 2) return;
 
-        if (selectedShapes.length < 2) return;
+    const clientRects = selectedShapes.map((shape) =>
+      shape.getClientRect({ relativeTo: layer })
+    );
 
-        const clientRects = selectedShapes.map((shape) =>
-          shape.getClientRect({ relativeTo: layer })
-        );
+    const minX = Math.min(...clientRects.map((rect) => rect.x));
+    const minY = Math.min(...clientRects.map((rect) => rect.y));
+    const maxX = Math.max(...clientRects.map((rect) => rect.x + rect.width));
+    const maxY = Math.max(...clientRects.map((rect) => rect.y + rect.height));
 
-        const minX = Math.min(...clientRects.map((rect) => rect.x));
-        const minY = Math.min(...clientRects.map((rect) => rect.y));
-        const maxX = Math.max(...clientRects.map((rect) => rect.x + rect.width));
-        const maxY = Math.max(...clientRects.map((rect) => rect.y + rect.height));
-
-        toast(`x:${minX}, y:${minY}, width:${maxX - minX}, height:${maxY - minY}`, {
-          position: "top-right",
-          autoClose: 1000, // Change this value to adjust the display duration
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          theme: "light",
-        });
-      }
-    };
-
-    window.addEventListener('mouseup', handleKeyUp);
-    
-    // Cleanup function to remove the event listener
-    return () => {
-      window.removeEventListener('mouseup', handleKeyUp);
-    };
+    toast(`x:${minX}, y:${minY}, width:${maxX - minX}, height:${maxY - minY}`, {
+      position: "top-right",
+      autoClose: 1000, // Change this value to adjust the display duration
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      theme: "light",
+    });  
+  }
+  useEffect(() => {    
+    setSelectedIds(selectedIds);
+    showRectangle()
   }, [selectedIds]); // Include layerRef in the dependency array
 
 
