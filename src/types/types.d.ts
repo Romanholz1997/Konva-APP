@@ -59,6 +59,7 @@ export interface RectangleAttrs {
   rotation: number;
   scaleY:number;
   scaleX:number;
+  groupId?: string | null;
 }
 
 export interface CircleAttrs {
@@ -71,6 +72,7 @@ export interface CircleAttrs {
   rotation: number;
   scaleY:number;
   scaleX:number;
+  groupId?: string | null;
 }
 
 export interface StarAttrs {
@@ -85,6 +87,7 @@ export interface StarAttrs {
   rotation: number;
   scaleY:number;
   scaleX:number;
+  groupId?: string | null;
 }
 
 export interface SVGAttrs {
@@ -98,6 +101,7 @@ export interface SVGAttrs {
   rotation: number;
   scaleY:number;
   scaleX:number;
+  groupId?: string | null;
 }
 
 export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs;

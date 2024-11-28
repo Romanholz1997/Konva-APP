@@ -19,6 +19,7 @@ interface CustomSVGProps {
   onShapeMouseLeave: ( e: Konva.KonvaEventObject<MouseEvent>) => void;
   onShapeMouseEnter: ( e: Konva.KonvaEventObject<MouseEvent>, shape: Konva.Image) => void;
   onDragMove: (e: any) => void;
+  draggable: boolean;
 }
 
 const SVGShape: React.FC<CustomSVGProps> = ({
@@ -37,7 +38,8 @@ const SVGShape: React.FC<CustomSVGProps> = ({
   dragBoundFunc,
   onDblClick,
   onShapeMouseLeave,
-  onShapeMouseEnter
+  onShapeMouseEnter,
+  draggable
 }) => {
   const shapeRef = React.useRef<Konva.Image>(null);
   return (
@@ -55,7 +57,7 @@ const SVGShape: React.FC<CustomSVGProps> = ({
         scaleY={scaleY}
         offsetX ={width/2}
         offsetY={height/2}
-        draggable
+        draggable ={draggable}
         onClick={(e) => onShapeClick(e, id)}
         onDragMove={(e) => onDragMove(e)}
         onDragEnd={(e) => onDragEnd(e, id)}

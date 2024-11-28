@@ -19,6 +19,7 @@ interface CustomStarProps {
   onShapeMouseLeave: ( e: Konva.KonvaEventObject<MouseEvent>) => void;
   onShapeMouseEnter: ( e: Konva.KonvaEventObject<MouseEvent>, shape: Konva.Star) => void;
   onDragMove: (e: any) => void;
+  draggable: boolean;
 }
 const Star: React.FC<CustomStarProps> = ({
   id,
@@ -37,7 +38,8 @@ const Star: React.FC<CustomStarProps> = ({
   dragBoundFunc,
   onDblClick,
   onShapeMouseLeave,
-  onShapeMouseEnter
+  onShapeMouseEnter,
+  draggable
 }) => {
   const shapeRef = React.useRef<Konva.Star>(null);
   return (
@@ -53,7 +55,7 @@ const Star: React.FC<CustomStarProps> = ({
       rotation={rotation}
       scaleX = {scaleX}
       scaleY={scaleY}
-      draggable
+      draggable ={draggable}
       onClick={(e) => onShapeClick(e, id)}
       onDragMove={(e) => onDragMove(e)}
       onDragEnd={(e) => onDragEnd(e, id)}

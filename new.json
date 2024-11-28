@@ -1,0 +1,139 @@
+{
+    "canvasprofile": {
+      "name": "default report template",
+      "lastupdated": "11-23-2024"
+    },
+    "canvasstage": {
+      "w": 8000,
+      "h": 8000,
+      "layers": {
+        "layer1": {
+          "x": 100,
+          "y": 100,
+          "width": 200,
+          "height": 200,
+          "shapes": [
+            {
+              "id": "rect1",
+              "name": "Rectangle Shape",
+              "type": "rectangle",
+              "x": 10,
+              "y": 15,
+              "width": 200,
+              "height": 50,
+              "fill": "#FF5733",
+              "rotation": 15,
+              "scaleY": 1,
+              "scaleX": 1,
+              "mydata": {
+                "tooltip": "My Rectangle Tooltip",
+                "details": {
+                  "myline1": "This is line 1",
+                  "myline2": "This is line 2",
+                  "myline3": "This is line 3"
+                }
+              }
+            }
+          ]
+        },
+        "layer2": {
+          "x": 300,
+          "y": 300,
+          "width": 2000,
+          "height": 2000,
+          "shapes": [
+            {
+              "id": "circle1",
+              "name": "Circle Shape",
+              "type": "circle",
+              "x": 50,
+              "y": 20,
+              "radius": 50,
+              "fill": "#33FF57",
+              "rotation": 0,
+              "scaleY": 1,
+              "scaleX": 1,
+              "mydata": {
+                "tooltip": "My Circle Tooltip",
+                "details": {
+                  "myline1": "This is line 1",
+                  "myline2": "This is line 2",
+                  "myline3": "This is line 3"
+                }
+              }
+            },
+            {
+              "id": "star1",
+              "name": "Star Shape",
+              "type": "star",
+              "x": 100,
+              "y": 100,
+              "numPoints": 5,
+              "innerRadius": 30,
+              "radius": 40,
+              "fill": "#3357FF",
+              "rotation": 45,
+              "scaleY": 1,
+              "scaleX": 1
+            },
+            {
+              "id": "shape1",
+              "name": "Shape Image1",
+              "type": "image",
+              "x": 100,
+              "y": 200,
+              "width": 100,
+              "height": 100,
+              "image": "/images/myimage1.svg",
+              "fill": "#3357FF",
+              "rotation": 45,
+              "scaleY": 1,
+              "scaleX": 1
+            },
+            {
+              "id": "shape2",
+              "name": "Shape Image2",
+              "type": "image",
+              "x": 400,
+              "y": 400,
+              "width": 150,
+              "height": 150,
+              "image": "/images/myimage2.svg",
+              "fill": "#3357FF",
+              "rotation": 45,
+              "scaleY": 1,
+              "scaleX": 1,
+              "mydata": {
+                "tooltip": "My Image2 Tooltip",
+                "details": {
+                  "myline1": "This is line 1",
+                  "myline2": "This is line 2",
+                  "myline3": "This is line 3"
+                }
+              }
+            },
+            {
+              "id": "text1",
+              "name": "Shape Text",
+              "type": "text",
+              "x": 100,
+              "y": 200,
+              "width": 200,
+              "height": 100,
+              "text": "Simple Text",
+              "fontSize": 30,
+              "fontFamily": "Calibri",
+              "fill": "green",
+              "rotation": 75,
+              "scaleY": 1,
+              "scaleX": 1
+            }
+          ]
+        }
+      }
+    },
+    "canvasobjects": {
+      "shapes": []
+    }
+  }
+  

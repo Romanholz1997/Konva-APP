@@ -19,6 +19,7 @@ interface CustomRectProps {
   onShapeMouseLeave: ( e: Konva.KonvaEventObject<MouseEvent>) => void;
   onShapeMouseEnter: ( e: Konva.KonvaEventObject<MouseEvent>, shape: Konva.Rect) => void;
   onDragMove: (e: any) => void;
+  draggable: boolean;
 }
 
 const Rectangle: React.FC<CustomRectProps> = ({
@@ -37,7 +38,8 @@ const Rectangle: React.FC<CustomRectProps> = ({
   dragBoundFunc,
   onDblClick,
   onShapeMouseLeave,
-  onShapeMouseEnter
+  onShapeMouseEnter,
+  draggable
 
 }) => {
   const shapeRef = React.useRef<Konva.Rect>(null);
@@ -55,7 +57,7 @@ const Rectangle: React.FC<CustomRectProps> = ({
       scaleY={scaleY}
       offsetX ={width/2}
       offsetY={height/2}
-      draggable
+      draggable ={draggable}
       onClick={(e) => onShapeClick(e, id)}
       onDragMove={(e) => onDragMove(e)}
       onDragEnd={(e) => onDragEnd(e, id)}

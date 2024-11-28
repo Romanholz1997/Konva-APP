@@ -58,8 +58,10 @@ const RightBar: React.FC<CustomRightMenu> = ({
               <input
                   type="number"
                   name="groupX"
+                  min={50} // Set your desired minimum value here
+                  max={3950} // Set your desired maximum value here
                   value={Math.round(groupPosition.x)}
-                  onChange={handleGroupPositionChange}
+                  onChange={handleGroupPositionChange}                  
                   style={{
                   width: '100%',
                   padding: '8px',
@@ -75,6 +77,8 @@ const RightBar: React.FC<CustomRightMenu> = ({
               <input
                   type="number"
                   name="groupY"
+                  min={50} // Set your desired minimum value here
+                  max={3950} // Set your desired maximum value here
                   value={Math.round(groupPosition.y)}
                   onChange={handleGroupPositionChange}
                   style={{
@@ -92,8 +96,10 @@ const RightBar: React.FC<CustomRightMenu> = ({
           <input
             type="number"
             name="x"
+            min={50} // Set your desired minimum value here
+            max={3950} // Set your desired maximum value here
             value={getCommonProperty('x') as number || ''}
-            onChange={handleInputChange}
+            onChange={handleInputChange}           
             style={{
               width: '100%',
               padding: '8px',
@@ -107,6 +113,8 @@ const RightBar: React.FC<CustomRightMenu> = ({
           <input
             type="number"
             name="y"
+            min={50} // Set your desired minimum value here
+            max={3950} // Set your desired maximum value here
             value={getCommonProperty('y') as number || ''}
             onChange={handleInputChange}
             style={{

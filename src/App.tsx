@@ -1,6 +1,7 @@
 import React from "react";
 import Sidebar from "./components/Canvas/Sidebar";
 import Canvas from "./components/Canvas/Canvas";
+import Test from "./components/Canvas/Test";
 const App: React.FC = () => {
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
@@ -14,12 +15,74 @@ const App: React.FC = () => {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar onDragStart={handleDragStart} />
-      <Canvas />
+      <Canvas />  
     </div>
   );
 };
 
 export default App;
+
+
+// src/App.tsx
+
+// import React, { useState } from 'react';
+// import CanvasRenderer from './components/CanvasRenderer';
+// import { CanvasJSON } from './types/typeData';
+// // import './styles.css';
+
+// const App: React.FC = () => {
+//   const [canvasData, setCanvasData] = useState<CanvasJSON | null>(null);
+//   const [error, setError] = useState<string | null>(null);
+
+//   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+//     const file = event.target.files && event.target.files[0];
+//     if (!file) return;
+
+//     if (file.type !== 'application/json') {
+//       setError('Please upload a valid JSON file.');
+//       setCanvasData(null);
+//       return;
+//     }
+
+//     const reader = new FileReader();
+//     reader.onload = (e) => {
+//       try {
+//         const result = e.target?.result;
+//         if (typeof result === 'string') {
+//           const parsedData: CanvasJSON = JSON.parse(result);
+//           setCanvasData(parsedData);
+//           setError(null);
+//         } else {
+//           setError('Failed to read the file.');
+//           setCanvasData(null);
+//         }
+//       } catch (err) {
+//         console.error(err);
+//         setError('Invalid JSON file.');
+//         setCanvasData(null);
+//       }
+//     };
+//     reader.readAsText(file);
+//   };
+
+//   return (
+//     <div className="App">
+//       <h1>Konva JSON Importer</h1>
+//       <div className="file-input-container">
+//         <input type="file" accept=".json" onChange={handleFileUpload} />
+//         {error && <p className="error">{error}</p>}
+//       </div>
+//       {canvasData ? (
+//         <CanvasRenderer canvasData={canvasData} />
+//       ) : (
+//         <p>Please upload a JSON file to display the canvas.</p>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default App;
+
 
 
 

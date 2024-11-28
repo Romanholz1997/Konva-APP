@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faAlignLeft, 
@@ -12,7 +12,8 @@ import {
   faGripHorizontal, 
   faGripVertical, 
   faBorderAll, 
-  faBullseye 
+  faPlus  ,
+  faUserFriends
 } from '@fortawesome/free-solid-svg-icons';
 
 interface CustomRightMenu {
@@ -30,6 +31,8 @@ interface CustomRightMenu {
   handleGridLine: () => void;
   gridLine: boolean;
   selectedIds: string[];
+  handleGroup: () => void;
+  areShapesGrouped: () => boolean;
 }
 
 const RightContext: React.FC<CustomRightMenu> = ({
@@ -47,6 +50,8 @@ const RightContext: React.FC<CustomRightMenu> = ({
   toggleSnap,
   handleCrossFair,
   handleGridLine,
+  handleGroup,
+  areShapesGrouped
 }) => {
   return (
     <ul
@@ -63,65 +68,78 @@ const RightContext: React.FC<CustomRightMenu> = ({
       }}
       onMouseLeave={() => onClose()}
     >
-      <li  style={{alignItems: 'center', padding: '5px', cursor: 'pointer' }}>
+      {/* <li  style={{alignItems: 'center', padding: '5px', cursor: 'pointer' }}>
         <strong>Selected Shapes:</strong> {selectedIds.join(', ')}
-      </li> 
-      <li
-        onClick={() => alignShapes('left')}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faAlignLeft} style={{ marginRight: '8px' }} />
-        Align Left
-      </li>
-      <li
-        onClick={() => alignShapes('right')}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faAlignRight} style={{ marginRight: '8px' }} />
-        Align Right
-      </li>
-      <li
-        onClick={() => alignShapes('top')}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faArrowUp} style={{ marginRight: '8px' }} />
-        Align Top
-      </li>
-      <li
-        onClick={() => alignShapes('bottom')}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faArrowDown} style={{ marginRight: '8px' }} />
-        Align Bottom
-      </li>
-      <li
-        onClick={() => DistributeShapes('horizontal')}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faArrowsAltH} style={{ marginRight: '8px' }} />
-        Distribute Horizontal
-      </li>
-      <li
-        onClick={() => DistributeShapes('vertical')}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faArrowsAltV} style={{ marginRight: '8px' }} />
-        Distribute Vertical
-      </li>
-      <li
-        onClick={flipSelectedShapesVertically}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faGripVertical} style={{ marginRight: '8px' }} />
-        Flip Vertical
-      </li>
-      <li
-        onClick={flipSelectedShapesHorizontally}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faGripHorizontal} style={{ marginRight: '8px' }} />
-        Flip Horizontal
-      </li>
+      </li>  */}
+      {selectedIds.length > 0 && <>
+        <li
+          onClick={() => alignShapes('left')}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faAlignLeft} style={{ marginRight: '8px', width:'15px'  }} />
+          Align Left
+        </li>
+        <li
+          onClick={() => alignShapes('right')}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faAlignRight} style={{ marginRight: '8px', width:'15px'  }} />
+          Align Right
+        </li>
+        <li
+          onClick={() => alignShapes('top')}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faArrowUp} style={{ marginRight: '8px', width:'15px'  }} />
+          Align Top
+        </li>
+        <li
+          onClick={() => alignShapes('bottom')}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faArrowDown} style={{ marginRight: '8px', width:'15px'  }} />
+          Align Bottom
+        </li>
+        <li
+          onClick={() => DistributeShapes('horizontal')}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faArrowsAltH} style={{ marginRight: '8px', width:'15px'  }} />
+          Distribute Horizontal
+        </li>
+        <li
+          onClick={() => DistributeShapes('vertical')}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faArrowsAltV} style={{ marginRight: '8px', width:'15px'  }} />
+          Distribute Vertical
+        </li>
+        <li
+          onClick={() =>{
+            handleGroup(); // Update the state and handle group
+            onClose();
+          }}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faUserFriends} style={{ marginRight: '8px', width:'15px' }} />
+          {areShapesGrouped() ? 'Ungroup' : 'Group'}
+        </li>
+        <li
+          onClick={flipSelectedShapesVertically}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faGripVertical} style={{ marginRight: '8px', width:'15px'  }} />
+          Flip Vertical
+        </li>
+        <li
+          onClick={flipSelectedShapesHorizontally}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faGripHorizontal} style={{ marginRight: '8px', width:'15px'  }} />
+          Flip Horizontal
+        </li>
+      </>
+      }
       <li
         onClick={() => {
           handleCrossFair();
@@ -129,7 +147,7 @@ const RightContext: React.FC<CustomRightMenu> = ({
         }}
         style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
       >
-        <FontAwesomeIcon icon={faBullseye} style={{ marginRight: '8px' }} />
+        <FontAwesomeIcon icon={faPlus  } style={{ marginRight: '8px', width:'15px'  }} />
         {isCrossFair ? 'Disable Crosshair' : 'Enable Crosshair'}
       </li>
       <li
@@ -139,7 +157,7 @@ const RightContext: React.FC<CustomRightMenu> = ({
         }}
         style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
       >
-        <FontAwesomeIcon icon={faBorderAll} style={{ marginRight: '8px' }} />
+        <FontAwesomeIcon icon={faBorderAll} style={{ marginRight: '8px', width:'15px'  }} />
         {gridLine ? 'Disable Gridlines' : 'Enable Gridlines'}
       </li>
       <li
@@ -149,19 +167,20 @@ const RightContext: React.FC<CustomRightMenu> = ({
         }}
         style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
       >
-        <FontAwesomeIcon icon={faSyncAlt} style={{ marginRight: '8px' }} />
+        <FontAwesomeIcon icon={faSyncAlt} style={{ marginRight: '8px', width:'15px'  }} />
         {snapEnabled ? 'Snap Enabled' : 'Snap Disabled'}
       </li>
-      <li
-        onClick={() => {
-          handleDelete();
-          onClose();
-        }}
-        style={{ display: 'flex', alignItems: 'center', padding: '5px', color: 'red', cursor: 'pointer' }}
-      >
-        <FontAwesomeIcon icon={faTrash} style={{ marginRight: '8px' }} />
-        Delete
-      </li>
+      {selectedIds.length > 0 && <li
+          onClick={() => {
+            handleDelete();
+            onClose();
+          }}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', color: 'red', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faTrash} style={{ marginRight: '8px', width:'15px'  }} />
+          Delete
+        </li>
+      }
     </ul>
   );
 };

@@ -8,7 +8,9 @@ import {
   Text,
   Line,
   Label,
-  Tag 
+  Tag,
+  Group,
+  Circle as KonvaCircle
 } from "react-konva";
 import Konva from "konva";
 import { saveAs } from 'file-saver';
@@ -120,9 +122,23 @@ const Canvas: React.FC = () => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const layerRef = useRef<Konva.Layer>(null);
+  const groupRef = useRef<Konva.Group>(null);
+  const rectangleRef = useRef<Konva.Rect>(null);
 
   const [showMouseInfo, setShowMouseInfo] = useState(false);
   const [crossFair, setCrossFair] = useState(true);
+  const [isGrouped, setIsGrouped] = useState<boolean>(false);
+  const handleSetGroup = () => {
+    setIsGrouped((prev) => !prev);
+  };
+
+  const dragStartPositions = useRef<{ [key: string]: { x: number; y: number } }>({});
+  const [groupBoundingBox, setGroupBoundingBox] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const HandleCrossFair = () =>{
     setCrossFair((prev) => !prev);
@@ -134,7 +150,7 @@ const Canvas: React.FC = () => {
     setSridLine((prev) => !prev);
   }
     
-    
+  
 
   const [isPanning, setIsPanning] = useState(false);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
@@ -653,7 +669,7 @@ const Canvas: React.FC = () => {
     return results.trim();
   };
   // Load the background image
-  React.useEffect(() => {
+  useEffect(() => {
     updateEditShapes(selectedIds);
   
     if (selectedIds.length > 1) {
@@ -665,7 +681,7 @@ const Canvas: React.FC = () => {
           .filter((node): node is Konva.Rect => node !== null);
   
         if (selectedShapes.length > 0) {
-          const boundingBox = getBoundingBox(selectedShapes);
+          const boundingBox = getBoundingBox(selectedIds);
           setGroupPosition({ x: boundingBox.x, y: boundingBox.y });
         }
       }
@@ -674,23 +690,31 @@ const Canvas: React.FC = () => {
     }
   }, [selectedIds, shapes]);
 
-  
+  const areShapesGrouped = () => {
+    const groupIds = selectedIds.map((id) => {
+      const shape = shapes.find((s) => s.id === id);
+      return shape?.groupId;
+    });
+    return groupIds.every((gid) => gid && gid === groupIds[0]);
+  };
+
   const updateEditShapes = (ids: string[]) => {
     const selectedShapes = shapes.filter((shape) => ids.includes(shape.id));
     setEditShapes(selectedShapes);
   };
 
-  const getBoundingBox = (shapes: Konva.Shape[]) => {
-    const clientRects = shapes.map((shape) => shape.getClientRect());
-    const minX = Math.min(...clientRects.map((rect) => rect.x));
-    const minY = Math.min(...clientRects.map((rect) => rect.y));
-    const maxX = Math.max(...clientRects.map((rect) => rect.x + rect.width));
-    const maxY = Math.max(...clientRects.map((rect) => rect.y + rect.height));
+  const getBoundingBox = (ids: string[]) => {
+    const selectedShapes = shapes.filter((shape) => ids.includes(shape.id));
+    // const clientRects = shapes.map((shape) => shape.getClientRect());
+    const minX = Math.min(...selectedShapes.map((rect) => rect.x));
+    const minY = Math.min(...selectedShapes.map((rect) => rect.y));
+    // const maxX = Math.max(...clientRects.map((rect) => rect.x + rect.width));
+    // const maxY = Math.max(...clientRects.map((rect) => rect.y + rect.height));
     return {
       x: minX,
       y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
+      // width: maxX - minX,
+      // height: maxY - minY,
     };
   };
 
@@ -736,12 +760,12 @@ const Canvas: React.FC = () => {
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
     const menuWidth = 200; // Approximate width of the menu
-    const menuHeight = 390; // Approximate height of the menu
+    const menuHeight = 450; // Approximate height of the menu
   
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const x = (pointer.x + 25) + menuWidth > viewportWidth ? (pointer.x - 25) - menuWidth : (pointer.x + 25);
-    const y = (pointer.y + 10) + menuHeight > viewportHeight ? (pointer.y + 30) - menuHeight : (pointer.y + 10);
+    const y = (pointer.y + 10) + menuHeight > viewportHeight ? (pointer.y + 60) - menuHeight : (pointer.y + 10);
     // Check if the rectangle is among the selected rectangles
     setMenuPos({ x, y });
     // if (selectedIds.includes(e.target.id())) {
@@ -1011,9 +1035,48 @@ const Canvas: React.FC = () => {
         .filter(Boolean) as Konva.Node[];
       transformer.nodes(nodes);
       transformer.getLayer()?.batchDraw();
+
+      if (selectedIds.length > 1) {
+        // Calculate bounding box for group selection
+        const boundingBox = transformer.getClientRect();
+        setGroupBoundingBox({
+          x: boundingBox.x,
+          y: boundingBox.y,
+          width: boundingBox.width,
+          height: boundingBox.height,
+        });
+      } else {
+        setGroupBoundingBox(null);
+      }
     }
   }, [selectedIds]);
 
+  // useEffect(() => {
+  //   const transformer = transformerRef.current;
+  //   const layer = layerRef.current;
+  //   if (transformer && layer) {
+  //     const nodes = selectedIds
+  //       .map((id) => layer.findOne('#' + id))
+  //       .filter((node): node is Konva.Node => node !== null && node !== undefined);
+  //     transformer.nodes(nodes);
+  //     transformer.getLayer()?.batchDraw();
+
+  //     if (selectedIds.length > 1) {
+  //       // Calculate bounding box for group selection
+  //       const boundingBox = transformer.getClientRect();
+  //       setGroupBoundingBox({
+  //         x: boundingBox.x,
+  //         y: boundingBox.y,
+  //         width: boundingBox.width,
+  //         height: boundingBox.height,
+  //       });
+  //     } else {
+  //       setGroupBoundingBox(null);
+  //     }
+  //   }
+  // }, [selectedIds, shapes]);
+
+  
   const selectionRectRef = React.useRef<Konva.Rect>(null);
   const selection = React.useRef<{
     visible: boolean;
@@ -1108,33 +1171,41 @@ const Canvas: React.FC = () => {
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.evt.preventDefault();
     if (isPanning) {
-      const pointerPos = stageRef.current?.getPointerPosition();
+      const stage = stageRef.current;
+      if(!stage) return;
+      const pointerPos = stage.getPointerPosition();
       if (pointerPos) {
-
+        // Calculate new position based on pointer position and last position
         const newPos = {
           x: pointerPos.x - lastPos.x * stageScale,
           y: pointerPos.y - lastPos.y * stageScale,
         };
-        if(newPos.x/stageScale > 0 )
-        {
-          newPos.x = 0;
-        }
-        if(newPos.y/stageScale >0)
-        {
-          newPos.y = 0;
-        }
-        if(newPos.x/stageScale < -((CANVAS_WIDTH - window.innerWidth + 230) / stageScale) )
-        {
-          newPos.x =  -((CANVAS_WIDTH - window.innerWidth + 230) );
-        }
-        if(newPos.y/stageScale < -((CANVAS_HEIGHT - window.innerHeight + 30) / stageScale))
-        {
-          newPos.y = -((CANVAS_HEIGHT - window.innerHeight + 30) );
-        }
+    
+         // Calculate the scaled canvas dimensions
+        const scaledCanvasWidth = CANVAS_WIDTH * stageScale;
+        const scaledCanvasHeight = CANVAS_HEIGHT * stageScale;
 
-        setStagePos(newPos);        
+        // Calculate the boundaries based on the container size
+        const container =  stage.container();
+        const containerWidth = window.innerWidth - 230;
+        const containerHeight = container.offsetHeight;
+
+        // Left and Top boundaries (can't move beyond 0)
+        newPos.x = Math.min(newPos.x, 0);
+        newPos.y = Math.min(newPos.y, 0);
+
+        // Right and Bottom boundaries
+        const maxX = containerWidth - scaledCanvasWidth;
+        const maxY = containerHeight - scaledCanvasHeight;
+
+        newPos.x = Math.max(newPos.x, maxX);
+        newPos.y = Math.max(newPos.y, maxY);
+
+        // Update the stage position
+        setStagePos(newPos);
       }
     }
+    
     const pos = stageRef.current?.getPointerPosition();
     if (pos) {
       
@@ -1192,6 +1263,48 @@ const Canvas: React.FC = () => {
       }
     }
   };
+
+  const handleGroup = () => {
+    // handleSetGroup();
+    if(!areShapesGrouped())
+    {
+      console.log("group");
+      const newGroupId = 'group-' + Date.now();
+      const updatedShapes = shapes.map((shape) => {
+        if (selectedIds.includes(shape.id)) {          
+          return { ...shape, groupId: newGroupId };
+        }
+        return shape;
+      });
+      console.log(updatedShapes);
+      setShapes(updatedShapes);
+      setSelectedIds([]);
+    }
+    else{
+      console.log("ungroup");
+      const updatedShapes = shapes.map((shape) => {
+        if (selectedIds.includes(shape.id)) {
+          return { ...shape, groupId: null };
+        }
+        return shape;
+      });
+      setShapes(updatedShapes);
+      setSelectedIds([]);
+    }
+  };
+
+  const handleUngroup = () => {
+    const updatedShapes = shapes.map((shape) => {
+      if (selectedIds.includes(shape.id)) {
+        return { ...shape, groupId: null };
+      }
+      return shape;
+    });
+    setShapes(updatedShapes);
+    setSelectedIds([]);
+    // setContextMenuVisible(false);
+  };
+
   const showRectangle = () =>{
     const layer = layerRef.current;
     if (!layer) return;
@@ -1211,7 +1324,7 @@ const Canvas: React.FC = () => {
     const maxX = Math.max(...clientRects.map((rect) => rect.x + rect.width));
     const maxY = Math.max(...clientRects.map((rect) => rect.y + rect.height));
 
-    toast(`x:${minX}, y:${minY}, width:${maxX - minX}, height:${maxY - minY}`, {
+    toast(`x:${Math.round(minX)}, y:${Math.round(minY)}, width:${Math.round(maxX - minX)}, height:${Math.round(maxY - minY)}`, {
       position: "top-right",
       autoClose: 1000, // Change this value to adjust the display duration
       hideProgressBar: false,
@@ -1228,16 +1341,16 @@ const Canvas: React.FC = () => {
 
 
 
-  useEffect(() => {
-    const transformer = transformerRef.current;
-    if (transformer) {
-      const nodes = selectedIds
-        .map((id) => layerRef.current?.findOne<Konva.Rect>(`#${id}`))
-        .filter(Boolean) as Konva.Node[];
-      transformer.nodes(nodes);
-      transformer.getLayer()?.batchDraw();
-    }
-  }, [selectedIds]);
+  // useEffect(() => {
+  //   const transformer = transformerRef.current;
+  //   if (transformer) {
+  //     const nodes = selectedIds
+  //       .map((id) => layerRef.current?.findOne<Konva.Rect>(`#${id}`))
+  //       .filter(Boolean) as Konva.Node[];
+  //     transformer.nodes(nodes);
+  //     transformer.getLayer()?.batchDraw();
+  //   }
+  // }, [selectedIds]);
 
   const handleShapeClick = (
     e: Konva.KonvaEventObject<MouseEvent>,
@@ -1404,7 +1517,7 @@ const Canvas: React.FC = () => {
           x >= rect.x-rect.width/2 && x< rect.x + rect.width/2 &&
           y>= rect.y -rect.height/2 && y< rect.y + rect.height/2
         )
-        return isPointInRotatedRect(x, y, rect);
+        // return isPointInRotatedRect(x, y, rect);
       } else if (shape.type === "circle") {
         const circle = shape as CircleAttrs;
         const dx = x - circle.x;
@@ -1416,7 +1529,7 @@ const Canvas: React.FC = () => {
           x >= svg.x - svg.width/2 && x< svg.x + svg.width/2 &&
           y >= svg.y - svg.height/2 && y< svg.y + svg.height/2
         )
-        return isPointInRotatedSVG(x, y, svg);
+        // return isPointInRotatedSVG(x, y, svg);
       } else if (shape.type === "star") {
         const star = shape as StarAttrs;
         return (
@@ -1475,7 +1588,8 @@ const Canvas: React.FC = () => {
             fill: "#0000ff",
             rotation: 0,
             scaleX:1,
-            scaleY:1        
+            scaleY:1,
+            groupId: null
           };
           break;
         case "circle":
@@ -1488,7 +1602,8 @@ const Canvas: React.FC = () => {
             fill: "#ff0000",
             rotation: 0,
             scaleX:1,
-            scaleY:1
+            scaleY:1,
+            groupId: null
           };
           break;
         case "star":
@@ -1503,7 +1618,8 @@ const Canvas: React.FC = () => {
             fill: "#aaaa33",
             rotation: 0, // Initialize rotation
             scaleX:1,
-            scaleY:1
+            scaleY:1,
+            groupId: null
           };
           break;
         case "science":
@@ -1519,7 +1635,8 @@ const Canvas: React.FC = () => {
             height: 100,
             rotation: 0,
             scaleX:1,
-            scaleY:1
+            scaleY:1,
+            groupId: null
           };
           break;
         default:
@@ -1552,8 +1669,51 @@ const Canvas: React.FC = () => {
     e.dataTransfer.dropEffect = overlapping ? "none" : "copy";
   };
 
+  const handleDragStart = (e: Konva.KonvaEventObject<DragEvent>) => {
+    if (selectedIds.length > 0) {
+      const pos: { [key: string]: { x: number; y: number } } = {};
+      selectedIds.forEach((id) => {
+        const node = layerRef.current!.findOne('#' + id) as Konva.Node | undefined;
+        if (node) {
+          pos[id] = { x: node.x(), y: node.y() };
+        }
+      });
+      dragStartPositions.current = pos;
+      dragStartPositions.current['group'] = { x: e.target.x(), y: e.target.y() };
+    }
+  };
+
+  const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    if (selectedIds.length > 0) {
+      const deltaX = e.target.x() - dragStartPositions.current['group'].x;
+      const deltaY = e.target.y() - dragStartPositions.current['group'].y;
+
+      selectedIds.forEach((id) => {
+        const node = layerRef.current!.findOne('#' + id) as Konva.Node | undefined;
+        const startPos = dragStartPositions.current[id];
+        if (node && startPos) {
+          node.position({
+            x: startPos.x + deltaX,
+            y: startPos.y + deltaY,
+          });
+        }
+      });
+      layerRef.current!.batchDraw();
+    }
+  };
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
     const newShapes = shapes.map((shape) => {
+      // selectedIds.forEach((id) => {
+      //   if (shape.id === id) {
+      //     const newPos = snapToGrid({ x: e.target.x(), y: e.target.y() });
+      //     return {
+      //       ...shape,
+      //       x: snapEnabled? newPos.x : e.target.x(),
+      //       y: snapEnabled? newPos.y : e.target.y(),
+      //     };
+      //   }
+      //   return shape;
+      // })
       if (shape.id === id) {
         const newPos = snapToGrid({ x: e.target.x(), y: e.target.y() });
         return {
@@ -1662,7 +1822,7 @@ const Canvas: React.FC = () => {
   }, [selectedIds, shapes]);
 
   const isOverlap = (shape1: Shape, shape2: Shape): boolean => {
-    if (shape1.type === "rectangle" && shape2.type === "rectangle" || shape1.type === "SVG" && shape2.type === "SVG" ||shape1.type === "SVG" && shape2.type === "rectangle" || shape1.type === "rectangle" && shape2.type === "SVG") {
+    if ((shape1.type === "rectangle" && shape2.type === "rectangle") || (shape1.type === "SVG" && shape2.type === "SVG") ||(shape1.type === "SVG" && shape2.type === "rectangle") || (shape1.type === "rectangle" && shape2.type === "SVG")) {
       return !(
         shape1.x + (shape1.width || 0) <= shape2.x ||
         shape2.x + (shape2.width || 0) <= shape1.x ||
@@ -1671,14 +1831,14 @@ const Canvas: React.FC = () => {
       );
     }
 
-    if (shape1.type === "circle" && shape2.type === "circle" || shape1.type === "star" && shape2.type === "star" ||shape1.type === "star" && shape2.type === "circle" || shape1.type === "circle" && shape2.type === "star") {
+    if ((shape1.type === "circle" && shape2.type === "circle") || (shape1.type === "star" && shape2.type === "star") ||(shape1.type === "star" && shape2.type === "circle") || (shape1.type === "circle" && shape2.type === "star")) {
       const dx = shape1.x - shape2.x;
       const dy = shape1.y - shape2.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       return distance < (shape1.radius || 0) + (shape2.radius || 0);
     }
 
-    if (shape1.type === "circle" && shape2.type === "rectangle" || shape1.type === "circle" && shape2.type === "SVG" ||  shape1.type === "star" && shape2.type === "rectangle"  || shape1.type === "star" && shape2.type === "SVG") {
+    if ((shape1.type === "circle" && shape2.type === "rectangle") || (shape1.type === "circle" && shape2.type === "SVG") || ( shape1.type === "star" && shape2.type === "rectangle")  || (shape1.type === "star" && shape2.type === "SVG")) {
       const rectLeft = shape2.x - (shape2.width || 0) / 2;
       const rectRight = shape2.x + (shape2.width || 0) / 2;
       const rectTop = shape2.y - (shape2.height || 0) / 2;
@@ -1695,11 +1855,12 @@ const Canvas: React.FC = () => {
       // Check if the distance is less than the circle's radius
       return dx * dx + dy * dy < (shape1.radius || 0) * (shape1.radius || 0);
     }
-    if (shape1.type === "rectangle" && shape2.type === "circle" || shape1.type === "rectangle" && shape2.type === "star" || shape1.type === "SVG" && shape2.type === "circle" || shape1.type === "SVG" && shape2.type === "star") {
+    if ((shape1.type === "rectangle" && shape2.type === "circle") || (shape1.type === "rectangle" && shape2.type === "star") || (shape1.type === "SVG" && shape2.type === "circle") || (shape1.type === "SVG" && shape2.type === "star")) {
       return isOverlap(shape2, shape1);
     }
     return false;
   };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedIds.length === 0) return;
@@ -1825,10 +1986,28 @@ const Canvas: React.FC = () => {
     setShapes((prevRectangles) =>
       prevRectangles.map((shape) => {
         if (selectedIds.includes(shape.id)) {
+          let newX = shape.x + delta.x;
+          let newY = shape.y + delta.y;
+          if(newX < 50)
+          {
+            newX = 50;
+          }
+          else if(newX > 3950)
+          {
+            newX = 3950;
+          }
+          if(newY < 50)
+          {
+            newY = 50;
+          }
+          else if(newY > 3950)
+          {
+            newY = 3950;
+          }
           return {
             ...shape,
-            x: shape.x + delta.x,
-            y: shape.y + delta.y,
+            x: newX,
+            y: newY,
           };
         } else {
           return shape;
@@ -1853,15 +2032,51 @@ const Canvas: React.FC = () => {
       'radius',
       'innerRadius',
       'outerRadius',
+      'fill'
     ];
+    const minValues: { [key: string]: number } = {
+      x: 50,
+      y: 50,
+      width: 1,
+      height: 1,
+      radius: 0,
+      innerRadius: 0,
+      outerRadius: 0,
+    };
+  
+    const maxValues: { [key: string]: number } = {
+      x: 3950,
+      y: 3950,
+      width: 500,
+      height: 500,
+      radius: 100,
+      innerRadius: 100,
+      outerRadius: 100,
+    };
     setEditShapes((prevEditShapes) =>
-      prevEditShapes.map((shape) => ({
-        ...shape,
-        [name]:
-          numericProps.includes(name)
-            ? parseFloat(value)
-            : value,
-      }))
+      prevEditShapes.map((shape) => {
+        let newValue = numericProps.includes(name) ? parseFloat(value) : parseFloat(value);
+        if (numericProps.includes(name)) {
+          if(name !== 'fill')
+          {
+            if (newValue < minValues[name]) {
+              newValue = minValues[name]; // Set to min if below
+            } else if (newValue > maxValues[name]) {
+              newValue = maxValues[name]; // Set to max if above
+            }
+          }
+          else{
+            return {
+              ...shape,
+              [name]: value,
+            };            
+          }          
+        }
+        return {
+          ...shape,
+          [name]: newValue,
+        };
+      })
     );
   };
   const handleSave = () => {
@@ -1897,7 +2112,7 @@ const Canvas: React.FC = () => {
     const isCommon = editShapes.every(
       (shape) => hasProperty(shape, propName) && shape[propName] === firstValue
     );
-    if(propName == 'fill'){
+    if(propName === 'fill'){
       return isCommon ? firstValue : '';
     }
     else{
@@ -1907,6 +2122,32 @@ const Canvas: React.FC = () => {
   };
 
   const selectedShapeTypes = Array.from(new Set(editShapes.map((s) => s.type)));
+
+  const dragBoundFunc = (pos: { x: number; y: number }, group: Konva.Rect) => {
+    const stage = stageRef.current;
+    if (stage && group) {
+      const scale = stageScale;
+      const { x: stageX, y: stageY } = stagePos;
+
+      // Get the group's bounding rectangle
+      const groupBox = group.getClientRect();
+      // Calculate the minimum and maximum positions
+      const minX = 0;
+      const minY = 0;
+      const maxX = CANVAS_WIDTH * scale - groupBox.width * scale + stageX;
+      const maxY = CANVAS_HEIGHT * scale - groupBox.height * scale + stageY;
+
+      // Apply constraints
+      let x = pos.x;
+      let y = pos.y;
+
+      x = Math.max(minX, Math.min(x, maxX));
+      y = Math.max(minY, Math.min(y, maxY));
+
+      return { x, y };
+    }
+    return pos;
+  };
 
   return (
     <div className="container">
@@ -1927,8 +2168,8 @@ const Canvas: React.FC = () => {
           height={CANVAS_HEIGHT}
           scaleX={stageScale}
           scaleY={stageScale}
-          x={stagePos.x > 0?0:stagePos.x}
-          y={stagePos.y>0?0:stagePos.y}
+          x={stagePos.x > 0 ? 0:stagePos.x}
+          y={stagePos.y > 0 ? 0:stagePos.y}
           onWheel={handleWheel}
           ref={stageRef}
           onMouseDown={handleMouseDown}
@@ -1936,9 +2177,8 @@ const Canvas: React.FC = () => {
           onMouseUp={handleMouseUp}
           onContextMenu={handleContextMenu} // Prevents default context menu
           onClick={onClickTap}
-          onTap={onClickTap}
+          // onTap={onClickTap}
         >
-          
           <Layer
             listening={false}
           >
@@ -1956,219 +2196,441 @@ const Canvas: React.FC = () => {
           { gridLine && (
             <Grid width={CANVAS_WIDTH} height={CANVAS_WIDTH} cellSize={GRID_SIZE} />
           )}
-          
           <Layer ref={layerRef}>
-            {shapes.map((shape) => {
-              if (shape.type === "rectangle") {
-                const rect = shape as RectangleAttrs;
-                const dragBoundFunc = (pos: { x: number; y: number }) => {
+            {/* Draw groups and shapes */}
+            {(() => {
+              const groupedShapes = shapes.reduce((acc, shape) => {
+                if (shape.groupId) {
+                  if (!acc[shape.groupId]) {
+                    acc[shape.groupId] = [];
+                  }
+                  acc[shape.groupId].push(shape);
+                }
+                return acc;
+              }, {} as { [key: string]: Shape[] });
+
+              const ungroupedShapes = shapes.filter((shape) => !shape.groupId);
+
+              const elements: React.ReactNode[] = [];
+
+              // Render grouped shapes
+              Object.keys(groupedShapes).forEach((groupId) => {
+                const groupShapes = groupedShapes[groupId];
+                // const groupRef = React.useRef<Konva.Group>(null);
+              
+                const dragBoundFunc = (pos: { x: number; y: number }, group: Konva.Group) => {
                   const stage = stageRef.current;
-                  if (stage) {
-                    // Get the size of the visible area  
-                    // Adjust for scaling and panning
-                    const scale = stageScale;
-                    const xOffset = stagePos.x;
-                    const yOffset = stagePos.y;
-                      // Calculate the visible area in stage coordinates
-                    const minX = (xOffset + rect.width/2) * scale;
-                    const minY = (yOffset + rect.height/2) * scale;
-                    const maxX = (CANVAS_WIDTH -  rect.width/2) * scale  + stagePos.x;
-                    const maxY = (CANVAS_WIDTH -  rect.width/2) * scale  + stagePos.y;  
-                    // const maxX = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta)) * scale  + stagePos.x;
-                    // const maxY = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta) ) * scale  + stagePos.y;  
-                    // Constrain the position
+                  if (stage && group) {
+                    const scale = stageScale; // Assuming this is the current stage scale
+                    const { x: stageX, y: stageY } = stagePos; // Current stage position
+                
+                    // Get the group's bounding rectangle without additional scaling
+                    const groupBox = group.getClientRect({ relativeTo: stage });
+                
+                    // Calculate the visible area in stage coordinates
+                    const visibleWidth = CANVAS_WIDTH / scale;
+                    const visibleHeight = CANVAS_HEIGHT / scale;
+                
+                    // Determine boundary constraints
+                    const minX = stageX;
+                    const minY = stageY;
+                    const maxX = stageX + visibleWidth - groupBox.width;
+                    const maxY = stageY + visibleHeight - groupBox.height;
+                
+                    // Apply constraints
                     let x = pos.x;
                     let y = pos.y;
+                
                     x = Math.max(minX, Math.min(x, maxX));
                     y = Math.max(minY, Math.min(y, maxY));
+                
                     return { x, y };
                   }
                   return pos;
                 };
-                return (
-                  <Rectangle
-                    key={rect.id}
-                    id={rect.id}
-                    x={rect.x}
-                    y={rect.y}
-                    scaleX={rect.scaleX}
-                    scaleY={rect.scaleY}
-                    width={rect.width}
-                    height={rect.height}
-                    fill={rect.fill}
-                    rotation={rect.rotation}
-                    onShapeClick={(e) => handleShapeClick(e, rect.id)}
-                    // Remove onTransformEnd from individual shapes
-                    onDragMove={() => (null)}
-                    onDragEnd={(e) => handleDragEnd(e, shape.id)}
-                    dragBoundFunc={dragBoundFunc}
-                    onDblClick={handleDoubleClick}
-                    onShapeMouseEnter={onShapeMouseEnter}
-                    onShapeMouseLeave={onShapeMouseLeave}
-                  />
+                
+                elements.push(
+                  <Group
+                    key={groupId}
+                    id={groupId}
+                    draggable
+                    onDragStart={handleDragStart}
+                    onDragMove={handleDragMove}
+                    dragBoundFunc={(pos) => dragBoundFunc(pos, groupRef.current!)}
+                    onClick={(e) => {
+                      e.cancelBubble = true;
+                      const ids = groupShapes.map((shape) => shape.id);
+                      setSelectedIds(ids);
+                    }}
+                    onContextMenu={handleContextMenu}
+                    ref={groupRef}
+                  >
+                    {groupShapes.map((shape) => {
+                      const commonProps = {
+                        key: shape.id,
+                        id: shape.id,
+                        x: shape.x,
+                        y: shape.y,
+                        rotation: shape.rotation,
+                        scaleX: shape.scaleX,
+                        scaleY: shape.scaleY,
+                        onShapeClick: () => null,
+                        draggable: false,
+                        onDragMove: () => null,
+                        onDragEnd: () => null,
+                        onDblClick: () => null,
+                        onShapeMouseEnter: () => null,
+                        onShapeMouseLeave: () => null,
+                      };
+              
+                      switch (shape.type) {
+                        case "rectangle": {
+                          const rect = shape as RectangleAttrs;
+                          return (
+                            <Rectangle
+                              {...commonProps}
+                              x={rect.x}
+                              y={rect.y}
+                              width={rect.width}
+                              height={rect.height}
+                              fill={rect.fill}
+                              // dragBoundFunc={(pos) => {
+                              //   // If needed, implement specific constraints for rectangles here
+                              //   return pos;
+                              // }}
+                            />
+                          );
+                        }
+                        case "SVG": {
+                          const svg = shape as SVGAttrs;
+                          return svg.image ? (
+                            <SVGShape
+                              {...commonProps}
+                              image={svg.image}
+                              width={svg.width}
+                              height={svg.height}
+                              // dragBoundFunc={(pos) => {
+                              //   // If needed, implement specific constraints for SVGs here
+                              //   return pos;
+                              // }}
+                            />
+                          ) : null;
+                        }
+                        case "circle": {
+                          const circle = shape as CircleAttrs;
+                          return (
+                            <Circle
+                              {...commonProps}
+                              radius={circle.radius}
+                              fill={circle.fill}
+                              // dragBoundFunc={(pos) => {
+                              //   const stage = stageRef.current;
+                              //   if (stage) {
+                              //     const scale = stageScale;
+                              //     const { x: stageX, y: stageY } = stagePos;
+              
+                              //     const minX = (stageX + circle.radius) * scale;
+                              //     const minY = (stageY + circle.radius) * scale;
+                              //     const maxX = (CANVAS_WIDTH - circle.radius) * scale + stageX;
+                              //     const maxY = (CANVAS_HEIGHT - circle.radius) * scale + stageY;
+              
+                              //     let x = pos.x;
+                              //     let y = pos.y;
+              
+                              //     x = Math.max(minX, Math.min(x, maxX));
+                              //     y = Math.max(minY, Math.min(y, maxY));
+              
+                              //     return { x, y };
+                              //   }
+                              //   return pos;
+                              // }}
+                            />
+                          );
+                        }
+                        case "star": {
+                          const star = shape as StarAttrs;
+                          return (
+                            <Star
+                              {...commonProps}
+                              numPoints={star.numPoints}
+                              innerRadius={star.innerRadius}
+                              outerRadius={star.radius}
+                              fill={star.fill}
+                              // dragBoundFunc={(pos) => {
+                              //   const stage = stageRef.current;
+                              //   if (stage) {
+                              //     const scale = stageScale;
+                              //     const { x: stageX, y: stageY } = stagePos;
+              
+                              //     const minX = (stageX + star.radius) * scale;
+                              //     const minY = (stageY + star.radius) * scale;
+                              //     const maxX = (CANVAS_WIDTH - star.radius) * scale + stageX;
+                              //     const maxY = (CANVAS_HEIGHT - star.radius) * scale + stageY;
+              
+                              //     let x = pos.x;
+                              //     let y = pos.y;
+              
+                              //     x = Math.max(minX, Math.min(x, maxX));
+                              //     y = Math.max(minY, Math.min(y, maxY));
+              
+                              //     return { x, y };
+                              //   }
+                              //   return pos;
+                              // }}
+                            />
+                          );
+                        }
+                        default:
+                          return null;
+                      }
+                    })}
+                  </Group>
                 );
-              }
-              else if(shape.type === "SVG")
-              {
-                const svg = shape as SVGAttrs;
-                const dragBoundFunc = (pos: { x: number; y: number }) => {
-                  const stage = stageRef.current;
-                  if (stage) {  
-                    // Adjust for scaling and panning
-                    const scale = stageScale;
-                    const xOffset = stagePos.x;
-                    const yOffset = stagePos.y;
-  
-                    // Calculate the visible area in stage coordinates
-                    const minX = (xOffset + svg.width/2) * scale;
-                    const minY = (yOffset + svg.height/2) * scale;
-                    const maxX = (CANVAS_WIDTH -  svg.width/2) * scale  + stagePos.x;
-                    const maxY = (CANVAS_WIDTH -  svg.width/2) * scale  + stagePos.y;  
-  
-                    // Constrain the position
-                    let x = pos.x;
-                    let y = pos.y;
-  
-                    x = Math.max(minX, Math.min(x, maxX));
-                    y = Math.max(minY, Math.min(y, maxY));
-                    return { x, y};
-                  }
-                  return pos;
-                };
-                return(
-                  svg.image !== null && (                     
-                    <SVGShape
-                      image={svg.image}
-                      key={svg.id}
-                      id={svg.id}
-                      x={svg.x}
-                      y={svg.y}
-                      scaleX={svg.scaleX}
-                      scaleY={svg.scaleY}
-                      width={svg.width}
-                      height={svg.height}
-                      rotation={svg.rotation}
-                      onShapeClick={(e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, svg.id)}
-                      // // Remove onTransformEnd from individual shapes
-                      onDragMove={() => (null)}
-                      onDragEnd={(e) => handleDragEnd(e, svg.id)}
-                      dragBoundFunc={dragBoundFunc}
-                      onDblClick={handleDoubleClick}
-                      onShapeMouseEnter={onShapeMouseEnter}
-                      onShapeMouseLeave={onShapeMouseLeave}
-                    />
-                  )
-                )              
-              }
-               else if (shape.type === "circle") {
-                const circle = shape as CircleAttrs;
-                const dragBoundFunc = (pos: { x: number; y: number }) => {
-                  const stage = stageRef.current;
-                  if (stage) {
-                    // Get the size of the visible area
-                    const stageWidth = stage.width();
-                    const stageHeight = stage.height();
-  
-                    // Adjust for scaling and panning
-                    const scale = stageScale;
-                    const xOffset = stagePos.x;
-                    const yOffset = stagePos.y;
-  
-                    // Calculate the visible area in stage coordinates
-                    const minX = (xOffset+circle.radius) * scale;
-                    const minY = (yOffset+circle.radius) * scale;
-                    const maxX = (stageWidth-circle.radius) * scale   + stagePos.x;
-                    const maxY = (stageHeight-circle.radius) * scale  + stagePos.x;
-  
-                    // Constrain the position
-                    let x = pos.x;
-                    let y = pos.y;
-  
-                    x = Math.max(minX, Math.min(x, maxX));
-                    y = Math.max(minY, Math.min(y, maxY));
-                    return { x, y};
-                  }
-                  return pos;
-                };
-                return (
-                  <Circle
-                    key={circle.id}
-                    id={circle.id}
-                    x={circle.x}
-                    y={circle.y}
-                    radius={circle.radius}
-                    fill={circle.fill}
-                    rotation={circle.rotation}
-                    scaleX={circle.scaleX}
-                    scaleY={circle.scaleY}
-                    onShapeClick={(e) => handleShapeClick(e, circle.id)}
-                    // Remove onTransformEnd from individual shapes
-                    onDragMove={() => (null)}
-                    onDragEnd={(e) => handleDragEnd(e, circle.id)}
-                    dragBoundFunc={dragBoundFunc}
-                    onDblClick={handleDoubleClick}
-                    onShapeMouseEnter={onShapeMouseEnter}
-                    onShapeMouseLeave={onShapeMouseLeave}
-                  />
-                );
-              } else if (shape.type === "star") {
-                const star = shape as StarAttrs;
-                const dragBoundFunc = (pos: { x: number; y: number }) => {
-                  const stage = stageRef.current;
-                  if (stage) {
-                    // Get the size of the visible area
-                    const stageWidth = stage.width();
-                    const stageHeight = stage.height();
-  
-                    // Adjust for scaling and panning
-                    const scale = stageScale;
-                    const xOffset = stagePos.x;
-                    const yOffset = stagePos.y;
-  
-                    // Calculate the visible area in stage coordinates
-                    const minX = (xOffset + star.radius) * scale;
-                    const minY = (yOffset + star.radius) * scale;
-                    const maxX = (stageWidth - star.radius) * scale   + stagePos.x;
-                    const maxY = (stageHeight  - star.radius) * scale  + stagePos.x;
-  
-                    // Constrain the position
-                    let x = pos.x;
-                    let y = pos.y;
-  
-                    x = Math.max(minX, Math.min(x, maxX));
-                    y = Math.max(minY, Math.min(y, maxY));
-                    return { x, y};
-                  }
-                  return pos;
-                };
-                return (
-                  <Star
-                    key={star.id}
-                    id={star.id}
-                    x={star.x}
-                    y={star.y}
-                    numPoints={star.numPoints}
-                    innerRadius={star.innerRadius}
-                    outerRadius={star.radius}
-                    fill={star.fill}
-                    rotation={star.rotation}
-                    scaleX={star.scaleX}
-                    scaleY={star.scaleY}
-                    onShapeClick={(e) => handleShapeClick(e, star.id)}
-                    // Remove onTransformEnd from individual shapes
-                    onDragMove={() => (null)}
-                    onDragEnd={(e) => handleDragEnd(e, star.id)}
-                    dragBoundFunc={dragBoundFunc}
-                    onDblClick={handleDoubleClick}
-                    onShapeMouseEnter={onShapeMouseEnter}
-                    onShapeMouseLeave={onShapeMouseLeave}
-                  />
-                );
-              }
-              return null;
-            })}
+              });
+              
 
-            {/* Transformer */}
+              // Render ungrouped shapes
+              elements.push(
+                ungroupedShapes.map((shape) => {
+                  if (shape.type === "rectangle") {
+                    const rect = shape as RectangleAttrs;
+                    const dragBoundFunc = (pos: { x: number; y: number }) => {
+                      const stage = stageRef.current;
+                      if (stage) {
+                        // Get the size of the visible area  
+                        // Adjust for scaling and panning
+                        const scale = stageScale;
+                        const xOffset = stagePos.x;
+                        const yOffset = stagePos.y;
+                          // Calculate the visible area in stage coordinates
+                        const minX = (xOffset + rect.width/2) * scale;
+                        const minY = (yOffset + rect.height/2) * scale;
+                        const maxX = (CANVAS_WIDTH -  rect.width/2) * scale  + stagePos.x;
+                        const maxY = (CANVAS_WIDTH -  rect.height/2) * scale  + stagePos.y;  
+                        // const maxX = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta)) * scale  + stagePos.x;
+                        // const maxY = (CANVAS_WIDTH -  rect.width * Math.cos(theta) - rect.height * Math.sin(theta) ) * scale  + stagePos.y;  
+                        // Constrain the position
+                        let x = pos.x;
+                        let y = pos.y;
+                        x = Math.max(minX, Math.min(x, maxX));
+                        y = Math.max(minY, Math.min(y, maxY));
+                        return { x, y };
+                      }
+                      return pos;
+                    };
+                    return (
+                      <Rectangle
+                        key={rect.id}
+                        id={rect.id}
+                        x={rect.x}
+                        y={rect.y}
+                        scaleX={rect.scaleX}
+                        scaleY={rect.scaleY}
+                        width={rect.width}
+                        height={rect.height}
+                        fill={rect.fill}
+                        rotation={rect.rotation}
+                        onShapeClick={(e) => handleShapeClick(e, rect.id)}
+                        // Remove onTransformEnd from individual shapes
+                        onDragMove={() => (null)}
+                        onDragEnd={(e) => handleDragEnd(e, shape.id)}
+                        dragBoundFunc={dragBoundFunc}
+                        onDblClick={handleDoubleClick}
+                        onShapeMouseEnter={onShapeMouseEnter}
+                        onShapeMouseLeave={onShapeMouseLeave}
+                        draggable={true}
+                      />
+                    );
+                  }
+                  else if(shape.type === "SVG")
+                  {
+                    const svg = shape as SVGAttrs;
+                    const dragBoundFunc = (pos: { x: number; y: number }) => {
+                      const stage = stageRef.current;
+                      if (stage) {  
+                        // Adjust for scaling and panning
+                        const scale = stageScale;
+                        const xOffset = stagePos.x;
+                        const yOffset = stagePos.y;
+      
+                        // Calculate the visible area in stage coordinates
+                        const minX = (xOffset + svg.width/2) * scale;
+                        const minY = (yOffset + svg.height/2) * scale;
+                        const maxX = (CANVAS_WIDTH -  svg.width/2) * scale  + stagePos.x;
+                        const maxY = (CANVAS_WIDTH -  svg.height/2) * scale  + stagePos.y;  
+      
+                        // Constrain the position
+                        let x = pos.x;
+                        let y = pos.y;
+      
+                        x = Math.max(minX, Math.min(x, maxX));
+                        y = Math.max(minY, Math.min(y, maxY));
+                        return { x, y};
+                      }
+                      return pos;
+                    };
+                    return(
+                      svg.image !== null && (                     
+                        <SVGShape
+                          image={svg.image}
+                          key={svg.id}
+                          id={svg.id}
+                          x={svg.x}
+                          y={svg.y}
+                          scaleX={svg.scaleX}
+                          scaleY={svg.scaleY}
+                          width={svg.width}
+                          height={svg.height}
+                          rotation={svg.rotation}
+                          onShapeClick={(e: KonvaEventObject<MouseEvent>) => handleShapeClick(e, svg.id)}
+                          // // Remove onTransformEnd from individual shapes
+                          onDragMove={() => (null)}
+                          onDragEnd={(e) => handleDragEnd(e, svg.id)}
+                          dragBoundFunc={dragBoundFunc}
+                          onDblClick={handleDoubleClick}
+                          onShapeMouseEnter={onShapeMouseEnter}
+                          onShapeMouseLeave={onShapeMouseLeave}
+                          draggable={true}
+                        />
+                      )
+                    )              
+                  }
+                   else if (shape.type === "circle") {
+                    const circle = shape as CircleAttrs;
+                    const dragBoundFunc = (pos: { x: number; y: number }) => {
+                      const stage = stageRef.current;
+                      if (stage) {
+                        // Get the size of the visible area
+                        const stageWidth = stage.width();
+                        const stageHeight = stage.height();
+      
+                        // Adjust for scaling and panning
+                        const scale = stageScale;
+                        const xOffset = stagePos.x;
+                        const yOffset = stagePos.y;
+      
+                        // Calculate the visible area in stage coordinates
+                        const minX = (xOffset+circle.radius) * scale;
+                        const minY = (yOffset+circle.radius) * scale;
+                        const maxX = (stageWidth-circle.radius) * scale   + stagePos.x;
+                        const maxY = (stageHeight-circle.radius) * scale  + stagePos.x;
+      
+                        // Constrain the position
+                        let x = pos.x;
+                        let y = pos.y;
+      
+                        x = Math.max(minX, Math.min(x, maxX));
+                        y = Math.max(minY, Math.min(y, maxY));
+                        return { x, y};
+                      }
+                      return pos;
+                    };
+                    return (
+                      <Circle
+                        key={circle.id}
+                        id={circle.id}
+                        x={circle.x}
+                        y={circle.y}
+                        radius={circle.radius}
+                        fill={circle.fill}
+                        rotation={circle.rotation}
+                        scaleX={circle.scaleX}
+                        scaleY={circle.scaleY}
+                        onShapeClick={(e) => handleShapeClick(e, circle.id)}
+                        // Remove onTransformEnd from individual shapes
+                        onDragMove={() => (null)}
+                        onDragEnd={(e) => handleDragEnd(e, circle.id)}
+                        dragBoundFunc={dragBoundFunc}
+                        onDblClick={handleDoubleClick}
+                        onShapeMouseEnter={onShapeMouseEnter}
+                        onShapeMouseLeave={onShapeMouseLeave}
+                        draggable={true}
+                      />
+                    );
+                  } else if (shape.type === "star") {
+                    const star = shape as StarAttrs;
+                    const dragBoundFunc = (pos: { x: number; y: number }) => {
+                      const stage = stageRef.current;
+                      if (stage) {
+                        // Get the size of the visible area
+                        const stageWidth = stage.width();
+                        const stageHeight = stage.height();
+      
+                        // Adjust for scaling and panning
+                        const scale = stageScale;
+                        const xOffset = stagePos.x;
+                        const yOffset = stagePos.y;
+      
+                        // Calculate the visible area in stage coordinates
+                        const minX = (xOffset + star.radius) * scale;
+                        const minY = (yOffset + star.radius) * scale;
+                        const maxX = (stageWidth - star.radius) * scale   + stagePos.x;
+                        const maxY = (stageHeight  - star.radius) * scale  + stagePos.x;
+      
+                        // Constrain the position
+                        let x = pos.x;
+                        let y = pos.y;
+      
+                        x = Math.max(minX, Math.min(x, maxX));
+                        y = Math.max(minY, Math.min(y, maxY));
+                        return { x, y};
+                      }
+                      return pos;
+                    };
+                    return (
+                      <Star
+                        key={star.id}
+                        id={star.id}
+                        x={star.x}
+                        y={star.y}
+                        numPoints={star.numPoints}
+                        innerRadius={star.innerRadius}
+                        outerRadius={star.radius}
+                        fill={star.fill}
+                        rotation={star.rotation}
+                        scaleX={star.scaleX}
+                        scaleY={star.scaleY}
+                        onShapeClick={(e) => handleShapeClick(e, star.id)}
+                        // Remove onTransformEnd from individual shapes
+                        onDragMove={() => (null)}
+                        onDragEnd={(e) => handleDragEnd(e, star.id)}
+                        dragBoundFunc={dragBoundFunc}
+                        onDblClick={handleDoubleClick}
+                        onShapeMouseEnter={onShapeMouseEnter}
+                        onShapeMouseLeave={onShapeMouseLeave}
+                        draggable={true}
+                      />
+                    );
+                  }
+                  return null;
+                })
+              );
+
+              return elements;
+            })()}
+
+            {/* Invisible Rect to cover group selection */}      
+
+            
+            {groupBoundingBox && (
+              
+              <Rect
+                x={(groupBoundingBox.x - stagePos.x) / stageScale}
+                y={(groupBoundingBox.y - stagePos.y) / stageScale }
+                width={groupBoundingBox.width / stageScale}
+                height={groupBoundingBox.height / stageScale}
+                fill="rgba(0,0,0,0)" // Fully transparent
+                draggable
+                onDragStart={handleDragStart}
+                onDragMove={handleDragMove}
+                dragBoundFunc={(pos) => dragBoundFunc(pos, rectangleRef.current!)}
+                // onDragEnd={(e) => handleDragEnd(e, star.id)}
+                // onClick={(e) => (e.cancelBubble = true)}
+                onContextMenu={handleContextMenu}
+                ref={rectangleRef}
+              />
+            )}
+            <Rect ref={selectionRectRef} />
             <Transformer
               ref={transformerRef}
               rotateEnabled={true}
@@ -2184,7 +2646,6 @@ const Canvas: React.FC = () => {
               ]}
               onTransformEnd={handleTransformEnd} // Attach handler here
             />
-            <Rect ref={selectionRectRef} />
             {snapEnabled &&
               guides.map((guide, index) => (
                 <Line
@@ -2199,11 +2660,10 @@ const Canvas: React.FC = () => {
                   dash={[4/ stageScale, 6/ stageScale]}
                 />
               ))}
-
-
-            {/* Selection Rectangle */}           
-            
+      
           </Layer>
+          
+
           <Layer>
             {tooltipVisible && (
               <Label x={tooltipX} y={tooltipY}>
@@ -2287,6 +2747,8 @@ const Canvas: React.FC = () => {
               isCrossFair={crossFair}
               handleGridLine={HandleGridLine}
               gridLine={gridLine}
+              handleGroup={handleGroup}
+              areShapesGrouped={areShapesGrouped}
 
             />
         )}
