@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stage, Layer, Line } from 'react-konva';
+import {Layer, Line } from 'react-konva';
 
 type GridProps = {
   width: number; // width of the canvas

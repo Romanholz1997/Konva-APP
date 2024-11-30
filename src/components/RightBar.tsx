@@ -1,9 +1,9 @@
 import React from 'react';
 import {
     ShapePropertyKey
-} from "../../types/types";
+} from "../types/types";
 
-type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG';
+type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG' | 'text';
 
 interface CustomRightMenu {
     handleSave: () => void;
@@ -176,6 +176,39 @@ const RightBar: React.FC<CustomRightMenu> = ({
               }}
             />
           </div>
+        )}
+        {selectedShapeTypes.length === 1 && selectedShapeTypes[0] === 'text' && (
+          <>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px' }}>fontSize:</label>
+              <input
+                type="number"
+                name="fontSize"
+                value={getCommonProperty('fontSize') as number || ''}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #ced4da',
+                  borderRadius: '4px',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px' }}>Text:</label>
+              <input
+                name="text"
+                value={getCommonProperty('text') as string || ''}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #ced4da',
+                  borderRadius: '4px',
+                }}
+              />
+            </div>
+          </>
         )}
         {selectedShapeTypes.length === 1 && selectedShapeTypes[0] === 'star' && (
           <>

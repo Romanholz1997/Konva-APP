@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faAlignLeft, 
@@ -53,13 +53,30 @@ const RightContext: React.FC<CustomRightMenu> = ({
   handleGroup,
   areShapesGrouped
 }) => {
+  const menuWidth = 200; // Approximate width of the menu
+  const menuHeight = 450; // Approximate height of the menu
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  let x = 0;
+  let y = 0;
+  if(selectedIds.length > 0)
+  {
+     x = (menuPosition.x + 25) + menuWidth > viewportWidth ? (menuPosition.x - 25) - menuWidth : (menuPosition.x + 25);
+     y = (menuPosition.y + 10) + menuHeight > viewportHeight ? (menuPosition.y + 60) - menuHeight : (menuPosition.y + 10);
+  }
+  else 
+  {
+    x = (menuPosition.x + 25) + menuWidth > viewportWidth ? (menuPosition.x - 25) - menuWidth : (menuPosition.x + 25);
+    y = (menuPosition.y + 10) + 150 > viewportHeight ? (menuPosition.y + 60) - 150 : (menuPosition.y + 10);
+  }
   return (
     <ul
       style={{
         position: 'absolute',
         width:'200px',
-        top: menuPosition.y,
-        left: menuPosition.x,
+        top: y,
+        left: x,
         listStyle: 'none',
         padding: '10px',
         background: 'white',
