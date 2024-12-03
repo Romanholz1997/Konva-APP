@@ -41,12 +41,20 @@ import {
     TextAttrs
   } from "../types/types";
 
+interface SelectRectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const CANVAS_WIDTH = 4000;
 const CANVAS_HEIGHT = 4000;
 const GRID_SIZE = 10;
 
 const Canvas: React.FC = () => {
   const [shapes, setShapes] = useState<Shape[]>([]);
+  const [selectRectangle, setSelectRectangle] = useState<SelectRectangle[]>([]);
   const [nextId, setNextId] = useState<number>(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editShapes, setEditShapes] = useState<Shape[]>([]);
@@ -104,12 +112,8 @@ const Canvas: React.FC = () => {
     height: number;
   } | null>(null);
 
-  const [selectionRect, setSelectionRect] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [selectionRect, setSelectionRect] = useState<SelectRectangle | null>(null);
+
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
 
   /////-------background------------------
@@ -486,10 +490,19 @@ const Canvas: React.FC = () => {
   
         setSelectedIds(shapesToSelect);
         setIsSelecting(false);
+        if (selectionRect) {
+          setSelectRectangle(prev => [...prev, selectionRect]);          
+          saveStateDebounced();
+        }        
         setSelectionRect(null);
       }
     }
   };
+
+  useEffect(() => {
+    setSelectRectangle(selectRectangle); 
+  }, [stagePos, stageScale])
+
   const handleContextMenu = (e: KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -1610,6 +1623,30 @@ const Canvas: React.FC = () => {
           )}
 
           <Layer ref={layerRef}>
+            {selectRectangle.map((selectRect) => {
+                // Calculate the adjusted positions based on stagePos and stageScale
+                const adjustedX = (selectRect.x - stagePos.x) / stageScale;
+                const adjustedY = (selectRect.y - stagePos.y) / stageScale;
+                const adjustedWidth = selectRect.width / stageScale;
+                const adjustedHeight = selectRect.height / stageScale;
+
+                // Define the points for the rectangle using Line
+                const points = [
+                    adjustedX, adjustedY, // Top-left
+                    adjustedX + adjustedWidth, adjustedY, // Top-right
+                    adjustedX + adjustedWidth, adjustedY + adjustedHeight, // Bottom-right
+                    adjustedX, adjustedY + adjustedHeight, // Bottom-left
+                    adjustedX, adjustedY // Back to Top-left to close the rectangle
+                ];
+                return (
+                    <Line
+                        points={points}
+                        stroke='blue' // Line color
+                        strokeWidth={2} // Line width
+                        key={Math.random()} // Ensure each Line has a unique key
+                    />
+                );
+            })}
             {(() => {
               const groupedShapes = shapes.reduce((acc, shape) => {
                 if (shape.groupId) {
@@ -1963,9 +2000,12 @@ const Canvas: React.FC = () => {
                 ref={rectangleRef}
               />
             )}
+            
             {isSelecting && selectionRect && (
               <Rect
                 fill="rgba(0,161,255,0.5)"
+                // stroke= 'blue' // Line color
+                // strokeWidth={2} // Line width
                 x={(selectionRect.x- stagePos.x) / stageScale}
                 y={(selectionRect.y- stagePos.y) / stageScale}
                 width={selectionRect.width / stageScale}

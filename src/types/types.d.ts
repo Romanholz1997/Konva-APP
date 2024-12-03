@@ -25,6 +25,20 @@ export interface CircleAttrs {
   groupId?: string | null;
 }
 
+// export interface SelectAttrs {
+//   id: string;
+//   type: 'select';
+//   x: number;
+//   y: number;
+//   width: number;
+//   height: number;
+//   groupId?: string | null;
+//   rotation?: number;
+//   scaleY?:number;
+//   scaleX?:number;
+//   fill?: string;
+// }
+
 export interface StarAttrs {
   id: string;
   type: 'star';
