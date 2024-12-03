@@ -491,7 +491,13 @@ const Canvas: React.FC = () => {
         setSelectedIds(shapesToSelect);
         setIsSelecting(false);
         if (selectionRect) {
-          setSelectRectangle(prev => [...prev, selectionRect]);          
+          const select = {
+            x: (selectionRect.x - stagePos.x) / stageScale,
+            y: (selectionRect.y - stagePos.y) / stageScale,
+            width: selectionRect.width/ stageScale,
+            height: selectionRect.height/ stageScale,
+          }
+          setSelectRectangle(prev => [...prev, select]);          
           saveStateDebounced();
         }        
         setSelectionRect(null);
@@ -1625,10 +1631,10 @@ const Canvas: React.FC = () => {
           <Layer ref={layerRef}>
             {selectRectangle.map((selectRect) => {
                 // Calculate the adjusted positions based on stagePos and stageScale
-                const adjustedX = (selectRect.x - stagePos.x) / stageScale;
-                const adjustedY = (selectRect.y - stagePos.y) / stageScale;
-                const adjustedWidth = selectRect.width / stageScale;
-                const adjustedHeight = selectRect.height / stageScale;
+                const adjustedX = (selectRect.x);
+                const adjustedY = (selectRect.y);
+                const adjustedWidth = selectRect.width;
+                const adjustedHeight = selectRect.height;
 
                 // Define the points for the rectangle using Line
                 const points = [
@@ -1642,7 +1648,7 @@ const Canvas: React.FC = () => {
                     <Line
                         points={points}
                         stroke='blue' // Line color
-                        strokeWidth={2} // Line width
+                        strokeWidth={2 / stageScale} // Line width
                         key={Math.random()} // Ensure each Line has a unique key
                     />
                 );
