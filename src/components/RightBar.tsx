@@ -3,7 +3,7 @@ import {
     ShapePropertyKey
 } from "../types/types";
 
-type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG' | 'text';
+type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG' | 'text' | 'location';
 
 interface CustomRightMenu {
     handleSave: () => void;
@@ -126,7 +126,7 @@ const RightBar: React.FC<CustomRightMenu> = ({
           />
         </div>
         {/* Type-specific properties */}
-        {selectedShapeTypes.length === 1 && selectedShapeTypes[0] === 'rectangle' && (
+        {selectedShapeTypes.length === 1 && selectedShapeTypes[0] === 'rectangle'  && (
           <>
             <div>
               <label style={{ display: 'block', marginBottom: '5px' }}>Width:</label>
@@ -159,6 +159,55 @@ const RightBar: React.FC<CustomRightMenu> = ({
               />
             </div>
           </>
+        )}
+        {selectedShapeTypes.length === 1 && selectedShapeTypes[0] === 'location' && (
+          <>
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px' }}>Width:</label>
+            <input
+              type="number"
+              name="width"
+              value={getCommonProperty('width') as number || ''}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ced4da',
+                borderRadius: '4px',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px' }}>Height:</label>
+            <input
+              type="number"
+              name="height"
+              value={getCommonProperty('height') as number || ''}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ced4da',
+                borderRadius: '4px',
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px' }}>strokeWidth:</label>
+            <input
+              type="number"
+              name="strokeWidth"
+              value={getCommonProperty('strokeWidth') as number || ''}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ced4da',
+                borderRadius: '4px',
+              }}
+            />
+          </div>
+        </>
         )}
         {selectedShapeTypes.length === 1 && selectedShapeTypes[0] === 'circle' && (
           <div>

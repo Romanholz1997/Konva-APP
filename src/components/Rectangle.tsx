@@ -8,10 +8,14 @@ interface CustomRectProps {
   y: number;
   width: number;
   height: number;
-  fill: string;
+  fill?: string;
   rotation: number;
   scaleX:number;
   scaleY:number;
+  stroke?: string;
+  strokeWidth?: number;
+  offsetX?: number;
+  offsetY?: number;
   onShapeClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>, id: string) => void;
   dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
@@ -20,6 +24,7 @@ interface CustomRectProps {
   onShapeMouseEnter: ( e: Konva.KonvaEventObject<MouseEvent>, shape: Konva.Rect) => void;
   onDragMove: (e: any) => void;
   draggable: boolean;
+
 }
 
 const Rectangle: React.FC<CustomRectProps> = ({
@@ -32,6 +37,10 @@ const Rectangle: React.FC<CustomRectProps> = ({
   rotation,
   scaleX,
   scaleY,
+  stroke,
+  strokeWidth,
+  offsetX,
+  offsetY,
   onDragMove,
   onShapeClick,
   onDragEnd,
@@ -55,8 +64,10 @@ const Rectangle: React.FC<CustomRectProps> = ({
       rotation={rotation}
       scaleX = {scaleX}
       scaleY={scaleY}
-      offsetX ={width/2}
-      offsetY={height/2}
+      offsetX={offsetX === 0 ? offsetX: width/2 }
+      offsetY={offsetY === 0 ? offsetY: height/2}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
       draggable ={draggable}
       onClick={(e) => onShapeClick(e, id)}
       onDragMove={(e) => onDragMove(e)}

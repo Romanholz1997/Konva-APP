@@ -1,6 +1,8 @@
 import React from "react";
 
-interface SidebarProps {
+interface SidebarProps {  
+  isDrawRectangle: boolean;
+  handleDrawRectangle: (newValue: boolean) => void;
   onDragStart: (
     event: React.DragEvent<HTMLDivElement>,
     shapeType: string
@@ -9,6 +11,7 @@ interface SidebarProps {
 
 interface DraggableItemProps {
   shapeType: string;
+  
   onDragStart: (e: React.DragEvent<HTMLDivElement>, shapeType: string) => void;
 }
 
@@ -33,7 +36,8 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   );
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onDragStart,  isDrawRectangle,
+  handleDrawRectangle, }) => {
   return (
     <div style={{ width: "200px", border: "1px solid #bbb", padding: "10px" }}>
       <DraggableItem shapeType="rectangle" onDragStart={onDragStart} />
@@ -41,6 +45,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart }) => {
       <DraggableItem shapeType="star" onDragStart={onDragStart} />
       <DraggableItem shapeType="science" onDragStart={onDragStart} />
       <DraggableItem shapeType="text" onDragStart={onDragStart} />
+      <div     
+        style={{
+          padding: "10px",
+          background: "lightgray",
+          marginBottom: "10px",
+          display: "flex",
+          cursor: "pointer",/* Change cursor on hover */
+          transition: "background 0.3s", /* Smooth transition for background */
+          alignItems: "center",          
+        }}
+        onClick={() => handleDrawRectangle(!isDrawRectangle)}
+      >
+        Draw Rectangle
+      </div>
     </div>
   );
 };

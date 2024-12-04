@@ -25,19 +25,20 @@ export interface CircleAttrs {
   groupId?: string | null;
 }
 
-// export interface SelectAttrs {
-//   id: string;
-//   type: 'select';
-//   x: number;
-//   y: number;
-//   width: number;
-//   height: number;
-//   groupId?: string | null;
-//   rotation?: number;
-//   scaleY?:number;
-//   scaleX?:number;
-//   fill?: string;
-// }
+export interface locationAttrs {
+  id: string;
+  type: 'location';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  scaleY:number;
+  scaleX:number;
+  fill: string;
+  strokeWidth: number;
+  groupId?: string | null;
+}
 
 export interface StarAttrs {
   id: string;
@@ -82,14 +83,15 @@ export interface TextAttrs {
   groupId?: string | null;
 }
 
-export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs | TextAttrs;
+export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs | TextAttrs | locationAttrs;
 
 export type ShapePropertyKey =
   | keyof RectangleAttrs
   | keyof CircleAttrs
   | keyof StarAttrs
   | keyof SVGAttrs
-  | keyof TextAttrs;
+  | keyof TextAttrs
+  | keyof locationAttrs
 
 export interface HistoryState {
   shapes: Shape[];

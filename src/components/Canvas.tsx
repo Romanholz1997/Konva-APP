@@ -29,9 +29,9 @@ import Star from "./Star";
 import SVGShape from "./SVGShape";
 import KonvaText from './Text';
 
-
 import {
     Shape,
+    locationAttrs,
     ShapePropertyKey,
     RectangleAttrs,
     StarAttrs,
@@ -48,13 +48,18 @@ interface SelectRectangle {
   height: number;
 }
 
+interface CanvasProps {  
+  isDrawRectangle: boolean;
+  handleDrawRectangle: (newValue: boolean) => void;
+}
+
 const CANVAS_WIDTH = 4000;
 const CANVAS_HEIGHT = 4000;
 const GRID_SIZE = 10;
 
-const Canvas: React.FC = () => {
+const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) => {
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const [selectRectangle, setSelectRectangle] = useState<SelectRectangle[]>([]);
+  // const [selectRectangle, setSelectRectangle] = useState<SelectRectangle[]>([]);
   const [nextId, setNextId] = useState<number>(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editShapes, setEditShapes] = useState<Shape[]>([]);
@@ -65,7 +70,6 @@ const Canvas: React.FC = () => {
   const [tooltipY, setTooltipY] = useState(0);
   const [isPanning, setIsPanning] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
   const [mouseCoords, setMouseCoords] = useState<{ x: number; y: number }>({
     x:0,
     y:0
@@ -98,13 +102,9 @@ const Canvas: React.FC = () => {
     x2: 0,
     y2: 0,
   });
-
   const dragStartPositions = useRef<{ [key: string]: { x: number; y: number } }>({});
-
-
   const [gridLine, setSridLine] = useState(true);
   const [snapEnabled, setSnapEnabled] = useState<boolean>(true);  
-
   const [groupBoundingBox, setGroupBoundingBox] = useState<{
     x: number;
     y: number;
@@ -113,7 +113,6 @@ const Canvas: React.FC = () => {
   } | null>(null);
 
   const [selectionRect, setSelectionRect] = useState<SelectRectangle | null>(null);
-
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
 
   /////-------background------------------
@@ -497,18 +496,33 @@ const Canvas: React.FC = () => {
             width: selectionRect.width/ stageScale,
             height: selectionRect.height/ stageScale,
           }
-          setSelectRectangle(prev => [...prev, select]);          
+          const locationShape: locationAttrs = {
+            id:"location_" + Math.random(),
+            type: 'location',
+            x:select.x,
+            y: select.y,
+            width: select.width,
+            height: select.height,
+            rotation: 0,
+            scaleX:1,
+            scaleY:1,
+            groupId: null,
+            fill: "#0000ff",
+            strokeWidth: 2,
+          }
+          if(isDrawRectangle)
+          {
+            setShapes(prev => [...prev, locationShape]);
+            handleDrawRectangle(false);
+          }
+          
+          // setSelectRectangle(prev => [...prev, select]);          
           saveStateDebounced();
         }        
         setSelectionRect(null);
       }
     }
   };
-
-  useEffect(() => {
-    setSelectRectangle(selectRectangle); 
-  }, [stagePos, stageScale])
-
   const handleContextMenu = (e: KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -1021,6 +1035,18 @@ const Canvas: React.FC = () => {
         node.scaleX(1);
         node.scaleY(1);
         if (shape.type === "rectangle") {
+          return {
+            ...shape,
+            x: node.x(),
+            y: node.y(),
+            rotation,
+            width: Math.max(5, Math.abs(node.width() * scaleX)),
+            height: Math.max(5, Math.abs(node.height() * scaleY)),
+            scaleX:shape.scaleX,
+            scaleY:shape.scaleY
+          };
+        }
+        else if (shape.type === "location") {
           return {
             ...shape,
             x: node.x(),
@@ -1629,7 +1655,7 @@ const Canvas: React.FC = () => {
           )}
 
           <Layer ref={layerRef}>
-            {selectRectangle.map((selectRect) => {
+            {/* {selectRectangle.map((selectRect) => {
                 // Calculate the adjusted positions based on stagePos and stageScale
                 const adjustedX = (selectRect.x);
                 const adjustedY = (selectRect.y);
@@ -1652,7 +1678,7 @@ const Canvas: React.FC = () => {
                         key={Math.random()} // Ensure each Line has a unique key
                     />
                 );
-            })}
+            })} */}
             {(() => {
               const groupedShapes = shapes.reduce((acc, shape) => {
                 if (shape.groupId) {
@@ -1673,25 +1699,17 @@ const Canvas: React.FC = () => {
                   const stage = stageRef.current;
                   if (stage && group) {
                     const scale = stageScale; // Assuming this is the current stage scale
-                    const { x: stageX, y: stageY } = stagePos; // Current stage position
-                
                     // Get the group's bounding rectangle without additional scaling
-                    const groupBox = group.getClientRect({ relativeTo: stage });
-                
-                    // Calculate the visible area in stage coordinates
-                    const visibleWidth = CANVAS_WIDTH / scale;
-                    const visibleHeight = CANVAS_HEIGHT / scale;
-                
-                    // Determine boundary constraints
-                    const minX = 0;
-                    const minY = 0;
-                    const maxX = stageX + visibleWidth - groupBox.width;
-                    const maxY = stageY + visibleHeight - groupBox.height;
-                
+                    const groupBox = group.getClientRect({ relativeTo: stage });               
+                    const xOffset = stagePos.x;
+                    const yOffset = stagePos.y;
+                    const minX = (xOffset) * scale;
+                    const minY = (yOffset ) * scale;
+                    const maxX = (CANVAS_WIDTH -  groupBox.width) * scale  + xOffset;
+                    const maxY = (CANVAS_WIDTH -  groupBox.height) * scale  + yOffset;                  
                     // Apply constraints
                     let x = pos.x;
-                    let y = pos.y;
-                
+                    let y = pos.y;              
                     x = Math.max(minX, Math.min(x, maxX));
                     y = Math.max(minY, Math.min(y, maxY));
                 
@@ -1744,6 +1762,22 @@ const Canvas: React.FC = () => {
                               width={rect.width}
                               height={rect.height}
                               fill={rect.fill}                             
+                            />
+                          );
+                        }
+                        case "location": {
+                          const rect = shape as locationAttrs;
+                          return (
+                            <Rectangle
+                              {...commonProps}
+                              x={rect.x}
+                              y={rect.y}
+                              width={rect.width}
+                              height={rect.height}
+                              stroke={rect.fill}
+                              strokeWidth={rect.strokeWidth}
+                              offsetX={0}
+                              offsetY={0}
                             />
                           );
                         }
@@ -1844,6 +1878,39 @@ const Canvas: React.FC = () => {
                         width={rect.width}
                         height={rect.height}
                         fill={rect.fill}
+                        dragBoundFunc={dragBoundFunc}
+                      />
+                    );
+                  }
+                  if (shape.type === "location") {
+                    const rect = shape as locationAttrs;
+                    const dragBoundFunc = (pos: { x: number; y: number }) => {
+                      const stage = stageRef.current;
+                      if (stage) {
+                        const scale = stageScale;
+                        const xOffset = stagePos.x;
+                        const yOffset = stagePos.y;
+                        const minX = (xOffset) * scale;
+                        const minY = (yOffset ) * scale;
+                        const maxX = (CANVAS_WIDTH -  rect.width) * scale  + stagePos.x;
+                        const maxY = (CANVAS_WIDTH -  rect.height) * scale  + stagePos.y;  
+                        let x = pos.x;
+                        let y = pos.y;
+                        x = Math.max(minX, Math.min(x, maxX));
+                        y = Math.max(minY, Math.min(y, maxY));
+                        return { x, y };
+                      }
+                      return pos;
+                    };
+                    return (
+                      <Rectangle
+                        {...commonProps}
+                        width={rect.width}
+                        height={rect.height}
+                        stroke={rect.fill}
+                        offsetX={0}
+                        offsetY={0}
+                        strokeWidth={rect.strokeWidth}
                         dragBoundFunc={dragBoundFunc}
                       />
                     );
