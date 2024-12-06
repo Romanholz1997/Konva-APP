@@ -41,6 +41,8 @@ import {
     TextAttrs
   } from "../types/types";
 
+import { CanvasData, LayerData, Layers, CanvasStage } from "../types/canvasTypes";
+
 interface SelectRectangle {
   x: number;
   y: number;
@@ -59,7 +61,6 @@ const GRID_SIZE = 10;
 
 const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) => {
   const [shapes, setShapes] = useState<Shape[]>([]);
-  // const [selectRectangle, setSelectRectangle] = useState<SelectRectangle[]>([]);
   const [nextId, setNextId] = useState<number>(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editShapes, setEditShapes] = useState<Shape[]>([]);
@@ -114,6 +115,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
 
   const [selectionRect, setSelectionRect] = useState<SelectRectangle | null>(null);
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
 
   /////-------background------------------
   const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
@@ -1356,7 +1358,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     setShapes((prevShapes) =>
       prevShapes.map((shape) =>
         selectedIds.includes(shape.id)
-          ? { ...shape, scaleX: shape.scaleX * -1 }
+          ? { ...shape, scaleX: (shape.scaleX ? shape.scaleX : 1) * -1 }
           : shape
       )
     );
@@ -1367,7 +1369,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         prevShapes.map((shape) =>
         {
           if (!selectedIds.includes(shape.id)) return shape;
-          const newScaleX = shape.scaleY * -1;           
+          let scale = shape.scaleY ? shape.scaleY : 1;
+          const newScaleX = scale * -1;           
           return {
             ...shape,
             scaleY: newScaleX,
@@ -1451,123 +1454,197 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   };
 
   ////--------------SaveAsSVG-------------------------
-  const imageToDataURL = (image: HTMLImageElement): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!image.complete || image.naturalWidth === 0) {
-        image.onload = () => {
-          convertImage();
-        };
-        image.onerror = () => {
-          reject(new Error('Failed to load image'));
-        };
-      } else {
-        convertImage();
-      }
+  // const imageToDataURL = (image: HTMLImageElement): Promise<string> => {
+  //   return new Promise((resolve, reject) => {
+  //     if (!image.complete || image.naturalWidth === 0) {
+  //       image.onload = () => {
+  //         convertImage();
+  //       };
+  //       image.onerror = () => {
+  //         reject(new Error('Failed to load image'));
+  //       };
+  //     } else {
+  //       convertImage();
+  //     }
   
-      function convertImage() {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = image.width;
-          canvas.height = image.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(image, 0, 0);
-            const dataURL = canvas.toDataURL('image/png');
-            resolve(dataURL);
-          } else {
-            reject(new Error('Canvas context is null'));
-          }
-        } catch (error) {
-          reject(error);
-        }
-      }
-    });
-  };  
-  const calculateStarPoints = (centerX: number, centerY: number, numPoints: number, innerRadius: number, outerRadius: number): string => {
-    let results = '';
-    const angle = Math.PI / numPoints;
-    for (let i = 0; i < 2 * numPoints; i++) {
-      const r = i % 2 === 0 ? outerRadius : innerRadius;
-      const currX = centerX + r * Math.sin(i * angle);
-      const currY = centerY - r * Math.cos(i * angle);
-      results += `${currX},${currY} `;
-    }
-    return results.trim();
-  };
-  const saveAsSVG = () => {
-    if (stageRef.current) {
-      const svgPromises = shapes.map((shape) => {
-        switch (shape.type) {
-          case 'rectangle':
-            const rotationRect = shape.rotation || 0;
-            return Promise.resolve(
-              `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationRect}, ${shape.x}, ${shape.y})"/>`
-            );
-          case 'circle':
-            return Promise.resolve(
-              `<circle cx="${shape.x}" cy="${shape.y}" r="${shape.radius}" fill="${shape.fill}" />`
-            );
-          case 'star':
-            const rotationStar = shape.rotation || 0;
-            const starPoints = calculateStarPoints(
-              shape.x,
-              shape.y,
-              shape.numPoints || 5,
-              shape.innerRadius || 10,
-              shape.radius || 20
-            );
-            return Promise.resolve(
-              `<polygon points="${starPoints}" fill="${shape.fill}" transform="rotate(${rotationStar}, ${shape.x}, ${shape.y})"/>`
-            );
-          case 'SVG':
-            if (shape.image) {
-              return imageToDataURL(shape.image).then((dataURL) => {
-                const rotationSVG = shape.rotation || 0;
-                return `
-                  <image 
-                    href="${dataURL}" 
-                    x="${shape.x}" 
-                    y="${shape.y}" 
-                    width="${shape.width}" 
-                    height="${shape.height}" 
-                    transform="rotate(${rotationSVG}, ${shape.x}, ${shape.y})"
-                  />
-                `;
-              });
-            } else {
-              return Promise.resolve('');
-            }
-          default:
-            return Promise.resolve('');
-        }
-      });
+  //     function convertImage() {
+  //       try {
+  //         const canvas = document.createElement('canvas');
+  //         canvas.width = image.width;
+  //         canvas.height = image.height;
+  //         const ctx = canvas.getContext('2d');
+  //         if (ctx) {
+  //           ctx.drawImage(image, 0, 0);
+  //           const dataURL = canvas.toDataURL('image/png');
+  //           resolve(dataURL);
+  //         } else {
+  //           reject(new Error('Canvas context is null'));
+  //         }
+  //       } catch (error) {
+  //         reject(error);
+  //       }
+  //     }
+  //   });
+  // };  
+  // const calculateStarPoints = (centerX: number, centerY: number, numPoints: number, innerRadius: number, outerRadius: number): string => {
+  //   let results = '';
+  //   const angle = Math.PI / numPoints;
+  //   for (let i = 0; i < 2 * numPoints; i++) {
+  //     const r = i % 2 === 0 ? outerRadius : innerRadius;
+  //     const currX = centerX + r * Math.sin(i * angle);
+  //     const currY = centerY - r * Math.cos(i * angle);
+  //     results += `${currX},${currY} `;
+  //   }
+  //   return results.trim();
+  // };
+  // const saveAsSVG = () => {
+  //   if (stageRef.current) {
+  //     const svgPromises = shapes.map((shape) => {
+  //       switch (shape.type) {
+  //         case 'rectangle':
+  //           const rotationRect = shape.rotation || 0;
+  //           return Promise.resolve(
+  //             `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationRect}, ${shape.x}, ${shape.y})"/>`
+  //           );
+  //         case 'circle':
+  //           return Promise.resolve(
+  //             `<circle cx="${shape.x}" cy="${shape.y}" r="${shape.radius}" fill="${shape.fill}" />`
+  //           );
+  //         case 'star':
+  //           const rotationStar = shape.rotation || 0;
+  //           const starPoints = calculateStarPoints(
+  //             shape.x,
+  //             shape.y,
+  //             shape.numPoints || 5,
+  //             shape.innerRadius || 10,
+  //             shape.radius || 20
+  //           );
+  //           return Promise.resolve(
+  //             `<polygon points="${starPoints}" fill="${shape.fill}" transform="rotate(${rotationStar}, ${shape.x}, ${shape.y})"/>`
+  //           );
+  //         case 'SVG':
+  //           if (shape.image) {
+  //             return imageToDataURL(shape.image).then((dataURL) => {
+  //               const rotationSVG = shape.rotation || 0;
+  //               return `
+  //                 <image 
+  //                   href="${dataURL}" 
+  //                   x="${shape.x}" 
+  //                   y="${shape.y}" 
+  //                   width="${shape.width}" 
+  //                   height="${shape.height}" 
+  //                   transform="rotate(${rotationSVG}, ${shape.x}, ${shape.y})"
+  //                 />
+  //               `;
+  //             });
+  //           } else {
+  //             return Promise.resolve('');
+  //           }
+  //         default:
+  //           return Promise.resolve('');
+  //       }
+  //     });
 
-      Promise.all(svgPromises).then((resolvedSvgElements) => {
-        const svgString = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="${stageRef.current!.width()}px" height="${stageRef.current!.height()}px">
-            ${resolvedSvgElements.join('')}
-          </svg>
-        `;
-        const blob = new Blob([svgString], { type: 'image/svg+xml' });
-        saveAs(blob, 'layout.svg');
-      });
-    }
-  };
+  //     Promise.all(svgPromises).then((resolvedSvgElements) => {
+  //       const svgString = `
+  //         <svg xmlns="http://www.w3.org/2000/svg" width="${stageRef.current!.width()}px" height="${stageRef.current!.height()}px">
+  //           ${resolvedSvgElements.join('')}
+  //         </svg>
+  //       `;
+  //       const blob = new Blob([svgString], { type: 'image/svg+xml' });
+  //       saveAs(blob, 'layout.svg');
+  //     });
+  //   }
+  // };
   ////--------------SaveAsSVG-------------------------
+
+  ////--------------SaveAsJson-----------------------
+  const saveAsJson = () => {
+    const jsonLayer1: LayerData = {
+      name: "layer1",
+      x: 0,
+      y: 0,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      image: "./background.svg"// Ensure `shapes` is defined in your scope
+    };
+    const jsonLayer2: LayerData = {
+      name: "layer2",
+      x: 0,
+      y: 0,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      shapes: shapes // Ensure `shapes` is defined in your scope
+    }; 
+    const jsonLayers: Layers = {
+      layer1: jsonLayer1,
+      layer2: jsonLayer2
+    };  
+    const jsonStage: CanvasStage = {
+      w: CANVAS_WIDTH,
+      h: CANVAS_HEIGHT,
+      layers: jsonLayers
+    };  
+    const currentTime = new Date().toISOString(); // Get current time in ISO format
+    const jsonData: CanvasData = {
+      canvasprofile: {
+        name: "default report template",
+        lastupdated: currentTime
+      },
+      canvasstage: jsonStage
+    };  
+    const jsonString = JSON.stringify(jsonData, null, 2); // Pretty print with 2 spaces
+
+    // Create a Blob from the JSON string
+    const blob = new Blob([jsonString], { type: 'application/json' });
+  
+    // Create a link element for downloading
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'canvasData.json'; // Specify the file name
+  
+    // Append to the document and trigger the download
+    document.body.appendChild(link);
+    link.click();
+  
+    // Clean up by removing the link element
+    document.body.removeChild(link);
+  };
+  ////--------------SaveAsJson-----------------------
 
   ////--------------importJson------------------------
   const handleJsonChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setLoading(true); // Start loading
       const reader = new FileReader();
 
       reader.onload = (event) => {
         try {
           const jsonData = JSON.parse(event.target?.result as string);
-          console.log("Imported JSON:", jsonData);
-          setShapes(jsonData.shapes || []); // Assuming shapes are under `shapes` key
+          // console.log("Imported JSON:", jsonData);
+          // setShapes(jsonData.shapes || []); // Assuming shapes are under `shapes` key
+          const importedShapes: Shape[] = (jsonData.shapes || []).map((shape: any) => ({
+            ...shape,
+            x: Number(shape.x),
+            y: Number(shape.y),
+            width: shape.width ? Number(shape.width) : undefined,
+            height: shape.height ? Number(shape.height) : undefined,
+            radius: shape.radius ? Number(shape.radius) : undefined,
+            rotation: shape.rotation ? Number(shape.rotation) : undefined,
+            scaleY: shape.scaleY ? Number(shape.scaleY) : undefined,
+            scaleX: shape.scaleX ? Number(shape.scaleY) : undefined,
+            innerRadius: shape.innerRadius ? Number(shape.innerRadius) : undefined,
+            numPoints:  shape.numPoints ? Number(shape.numPoints) : undefined,
+            strokeWidth:  shape.strokeWidth ? Number(shape.strokeWidth) : undefined,
+            // Convert other numerical properties as needed
+          }));
+
+          setShapes(importedShapes);
         } catch (error) {
           console.error("Invalid JSON file:", error);
+        } finally {
+          setLoading(false); // Stop loading
         }
       };
 
@@ -1619,6 +1696,12 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         ref={canvasRef}
         style={{overflow:"hidden", display: 'flex'}}
       >
+        {loading && (
+          <div className="overlay" aria-busy="true" aria-live="polite">
+            <div className="spinner" />
+            <p>Loading...</p>
+          </div>
+        )}
         <ToastContainer />
         <Stage
         width={CANVAS_WIDTH}
@@ -1637,6 +1720,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         >
           <Layer
             listening={false}
+            name="backgroundLayer"
           >
             {backgroundImage && (
               <KonvaImage
@@ -1654,7 +1738,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             <Grid width={CANVAS_WIDTH} height={CANVAS_WIDTH} cellSize={GRID_SIZE} />
           )}
 
-          <Layer ref={layerRef}>
+          <Layer ref={layerRef}  name="shapeLayer">
             {/* {selectRectangle.map((selectRect) => {
                 // Calculate the adjusted positions based on stagePos and stageScale
                 const adjustedX = (selectRect.x);
@@ -1735,13 +1819,12 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                   >
                     {groupShapes.map((shape) => {
                       const commonProps = {
-                        key: shape.id,
                         id: shape.id,
                         x: shape.x,
                         y: shape.y,
-                        rotation: shape.rotation,
-                        scaleX: shape.scaleX,
-                        scaleY: shape.scaleY,
+                        rotation: shape.rotation ? shape.rotation : 0,
+                        scaleX: shape.scaleX? shape.scaleX : 1,
+                        scaleY: shape.scaleY? shape.scaleY: 1,
                         onShapeClick: () => null,
                         draggable: false,
                         onDragMove: () => null,
@@ -1757,6 +1840,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                           return (
                             <Rectangle
                               {...commonProps}
+                              key={shape.id}
                               x={rect.x}
                               y={rect.y}
                               width={rect.width}
@@ -1770,6 +1854,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                           return (
                             <Rectangle
                               {...commonProps}
+                              key={shape.id}
                               x={rect.x}
                               y={rect.y}
                               width={rect.width}
@@ -1786,6 +1871,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                           return svg.image ? (
                             <SVGShape
                               {...commonProps}
+                              key={shape.id}
                               image={svg.image}
                               width={svg.width}
                               height={svg.height}                              
@@ -1797,6 +1883,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                           return (
                             <Circle
                               {...commonProps}
+                              key={shape.id}
                               radius={circle.radius}
                               fill={circle.fill}                              
                             />
@@ -1807,6 +1894,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                           return (
                             <Star
                               {...commonProps}
+                              key={shape.id}
                               numPoints={star.numPoints}
                               innerRadius={star.innerRadius}
                               outerRadius={star.radius}
@@ -1819,6 +1907,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                           return (
                             <Text
                               {...commonProps}
+                              key={shape.id}
                               text={text.text}
                               fontSize={text.fontSize}
                               fontFamily={text.fontFamily}
@@ -1837,13 +1926,12 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
               elements.push(
                 ungroupedShapes.map((shape) => {
                   const commonProps = {
-                    key: shape.id,
                     id: shape.id,
                     x: shape.x,
                     y: shape.y,
-                    rotation: shape.rotation,
-                    scaleX: shape.scaleX,
-                    scaleY: shape.scaleY,
+                    rotation: shape.rotation ? shape.rotation : 0,
+                    scaleX: shape.scaleX? shape.scaleX : 1,
+                    scaleY: shape.scaleY? shape.scaleY: 1,
                     onShapeClick: (e: Konva.KonvaEventObject<MouseEvent>) => handleShapeClick(e, shape.id),
                     draggable: true,
                     onDragMove: () => null,
@@ -1875,6 +1963,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                     return (
                       <Rectangle
                         {...commonProps}
+                        key={shape.id}
                         width={rect.width}
                         height={rect.height}
                         fill={rect.fill}
@@ -1905,6 +1994,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                     return (
                       <Rectangle
                         {...commonProps}
+                        key={shape.id}
                         width={rect.width}
                         height={rect.height}
                         stroke={rect.fill}
@@ -1942,9 +2032,10 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                       svg.image !== null && (                     
                         <SVGShape
                           {...commonProps}
+                          key={shape.id}
                           image={svg.image}                         
-                          scaleX={svg.scaleX}
-                          scaleY={svg.scaleY}
+                          scaleX={svg.scaleX ? svg.scaleX : 1}
+                          scaleY={svg.scaleY ? svg.scaleY : 1}
                           width={svg.width}
                           height={svg.height}
                           dragBoundFunc={dragBoundFunc}       
@@ -1978,6 +2069,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                     return (
                       <Circle
                         {...commonProps}  
+                        key={shape.id}
                         radius={circle.radius}
                         fill={circle.fill}
                         dragBoundFunc={dragBoundFunc}
@@ -2009,7 +2101,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                     };
                     return (
                       <Star
-                        {...commonProps}                         
+                        {...commonProps}
+                        key={shape.id}
                         numPoints={star.numPoints}
                         innerRadius={star.innerRadius}
                         outerRadius={star.radius}
@@ -2042,7 +2135,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                     };
                     return (
                       <KonvaText
-                        {...commonProps}                         
+                        {...commonProps}   
+                        key={shape.id}                      
                         text={text.text}
                         fontFamily={text.fontFamily}
                         fontSize={text.fontSize}
@@ -2101,7 +2195,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
               onTransformEnd={handleTransformEnd} // Attach handler here
             />
           </Layer>  
-          <Layer>
+          <Layer  name="tooltipLayer">
             {tooltipVisible && (
               <Label x={tooltipX} y={tooltipY}>
                 <Tag
@@ -2126,7 +2220,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
               </Label>
             )}
           </Layer>
-          <Layer>
+          <Layer name="crossfairLayer">
             {crossFair && showMouseInfo && (
               <>
                 {/* Display Mouse Coordinates */}
@@ -2214,7 +2308,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         <button onClick={handleRedo} disabled={!canRedo}>
           Redo
         </button>
-        <button style={{
+        {/* <button style={{
           backgroundColor: "#4CAF50", // Green background
           marginLeft: "10px",
           color: "white", // White text
@@ -2231,7 +2325,25 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#45a049")} // Darker green on hover
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#4CAF50")} // Revert back on mouse leave
         onClick={saveAsSVG}
-        >Save as SVG</button>
+        >Save as SVG</button> */}
+        <button style={{
+          backgroundColor: "#4CAF50", // Green background
+          marginLeft: "10px",
+          color: "white", // White text
+          border: "none", // No border
+          padding: "10px 10px", // Top/bottom and left/right padding
+          textAlign: "center", // Center the text
+          textDecoration: "none", // No underline
+          display: "inline-block", // Inline block for proper spacing
+          fontSize: "15px", // Font size
+          borderRadius: "5px", // Rounded corners
+          cursor: "pointer", // Pointer cursor on hover
+          transition: "background-color 0.3s", // Smooth transition
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#45a049")} // Darker green on hover
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#4CAF50")} // Revert back on mouse leave
+        onClick={saveAsJson}
+        >Save as Json</button>
         {/* <label
           style={{
             display: "inline-block",
@@ -2285,6 +2397,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
           />
         </label>
       </div>
+      
     </div>
   );  
 };  

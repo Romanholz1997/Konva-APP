@@ -12,10 +12,10 @@
   <rect width="4000" height="4000" fill="url(#bgGradient)" />
   
   <!-- Optional: Add some shapes or patterns -->
-  <circle cx="2000" cy="2000" r="500" fill="rgba(255, 255, 255, 0.3)" />
+  <circle cx="500" cy="500" r="500" fill="rgba(255, 255, 255, 0.3)" />
   
   <!-- Add some text -->
-  <text x="2000" y="2100" font-size="200" text-anchor="middle" fill="#ffffff">
+  <text x="500" y="600" font-size="200" text-anchor="middle" fill="#ffffff">
     Background
   </text>
 </svg>

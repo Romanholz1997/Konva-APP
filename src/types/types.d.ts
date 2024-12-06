@@ -6,9 +6,11 @@ export interface RectangleAttrs {
   width: number;
   height: number;
   fill: string;
-  rotation: number;
-  scaleY:number;
-  scaleX:number;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
+  radius?: number;
+  innerRadius?: number;
   groupId?: string | null;
 }
 
@@ -19,9 +21,12 @@ export interface CircleAttrs {
   y: number;
   radius: number;
   fill: string;
-  rotation: number;
-  scaleY:number;
-  scaleX:number;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
+  width?:number;
+  height?:number;
+  innerRadius?: number;
   groupId?: string | null;
 }
 
@@ -32,11 +37,13 @@ export interface locationAttrs {
   y: number;
   width: number;
   height: number;
-  rotation: number;
-  scaleY:number;
-  scaleX:number;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
   fill: string;
-  strokeWidth: number;
+  strokeWidth?: number;
+  radius?: number;
+  innerRadius?: number;
   groupId?: string | null;
 }
 
@@ -45,13 +52,17 @@ export interface StarAttrs {
   type: 'star';
   x: number;
   y: number;
+  width?:number;
+  height?:number;
   numPoints: number;
   innerRadius: number;
   radius: number;
   fill: string;
-  rotation: number;
-  scaleY:number;
-  scaleX:number;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
+  radius?: number;
+  innerRadius?: number;
   groupId?: string | null;
 }
 
@@ -63,9 +74,9 @@ export interface SVGAttrs {
   y: number;
   width: number;
   height: number;
-  rotation: number;
-  scaleY:number;
-  scaleX:number;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
   groupId?: string | null;
 }
 export interface TextAttrs {
@@ -76,9 +87,9 @@ export interface TextAttrs {
   text: string,
   fontSize: number,
   fontFamily: string,
-  rotation: number;
-  scaleY:number;
-  scaleX:number;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
   fill: string;
   groupId?: string | null;
 }

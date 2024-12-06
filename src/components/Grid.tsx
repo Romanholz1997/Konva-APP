@@ -44,7 +44,7 @@ const Grid: React.FC<GridProps> = ({
   }
 
   return (
-    <Layer>
+    <Layer  name="gridLayer">
       {verticalLines}
       {horizontalLines}
     </Layer>
