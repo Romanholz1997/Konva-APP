@@ -1454,108 +1454,108 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   };
 
   ////--------------SaveAsSVG-------------------------
-  // const imageToDataURL = (image: HTMLImageElement): Promise<string> => {
-  //   return new Promise((resolve, reject) => {
-  //     if (!image.complete || image.naturalWidth === 0) {
-  //       image.onload = () => {
-  //         convertImage();
-  //       };
-  //       image.onerror = () => {
-  //         reject(new Error('Failed to load image'));
-  //       };
-  //     } else {
-  //       convertImage();
-  //     }
+  const imageToDataURL = (image: HTMLImageElement): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!image.complete || image.naturalWidth === 0) {
+        image.onload = () => {
+          convertImage();
+        };
+        image.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+      } else {
+        convertImage();
+      }
   
-  //     function convertImage() {
-  //       try {
-  //         const canvas = document.createElement('canvas');
-  //         canvas.width = image.width;
-  //         canvas.height = image.height;
-  //         const ctx = canvas.getContext('2d');
-  //         if (ctx) {
-  //           ctx.drawImage(image, 0, 0);
-  //           const dataURL = canvas.toDataURL('image/png');
-  //           resolve(dataURL);
-  //         } else {
-  //           reject(new Error('Canvas context is null'));
-  //         }
-  //       } catch (error) {
-  //         reject(error);
-  //       }
-  //     }
-  //   });
-  // };  
-  // const calculateStarPoints = (centerX: number, centerY: number, numPoints: number, innerRadius: number, outerRadius: number): string => {
-  //   let results = '';
-  //   const angle = Math.PI / numPoints;
-  //   for (let i = 0; i < 2 * numPoints; i++) {
-  //     const r = i % 2 === 0 ? outerRadius : innerRadius;
-  //     const currX = centerX + r * Math.sin(i * angle);
-  //     const currY = centerY - r * Math.cos(i * angle);
-  //     results += `${currX},${currY} `;
-  //   }
-  //   return results.trim();
-  // };
-  // const saveAsSVG = () => {
-  //   if (stageRef.current) {
-  //     const svgPromises = shapes.map((shape) => {
-  //       switch (shape.type) {
-  //         case 'rectangle':
-  //           const rotationRect = shape.rotation || 0;
-  //           return Promise.resolve(
-  //             `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationRect}, ${shape.x}, ${shape.y})"/>`
-  //           );
-  //         case 'circle':
-  //           return Promise.resolve(
-  //             `<circle cx="${shape.x}" cy="${shape.y}" r="${shape.radius}" fill="${shape.fill}" />`
-  //           );
-  //         case 'star':
-  //           const rotationStar = shape.rotation || 0;
-  //           const starPoints = calculateStarPoints(
-  //             shape.x,
-  //             shape.y,
-  //             shape.numPoints || 5,
-  //             shape.innerRadius || 10,
-  //             shape.radius || 20
-  //           );
-  //           return Promise.resolve(
-  //             `<polygon points="${starPoints}" fill="${shape.fill}" transform="rotate(${rotationStar}, ${shape.x}, ${shape.y})"/>`
-  //           );
-  //         case 'SVG':
-  //           if (shape.image) {
-  //             return imageToDataURL(shape.image).then((dataURL) => {
-  //               const rotationSVG = shape.rotation || 0;
-  //               return `
-  //                 <image 
-  //                   href="${dataURL}" 
-  //                   x="${shape.x}" 
-  //                   y="${shape.y}" 
-  //                   width="${shape.width}" 
-  //                   height="${shape.height}" 
-  //                   transform="rotate(${rotationSVG}, ${shape.x}, ${shape.y})"
-  //                 />
-  //               `;
-  //             });
-  //           } else {
-  //             return Promise.resolve('');
-  //           }
-  //         default:
-  //           return Promise.resolve('');
-  //       }
-  //     });
+      function convertImage() {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(image, 0, 0);
+            const dataURL = canvas.toDataURL('image/png');
+            resolve(dataURL);
+          } else {
+            reject(new Error('Canvas context is null'));
+          }
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  };  
+  const calculateStarPoints = (centerX: number, centerY: number, numPoints: number, innerRadius: number, outerRadius: number): string => {
+    let results = '';
+    const angle = Math.PI / numPoints;
+    for (let i = 0; i < 2 * numPoints; i++) {
+      const r = i % 2 === 0 ? outerRadius : innerRadius;
+      const currX = centerX + r * Math.sin(i * angle);
+      const currY = centerY - r * Math.cos(i * angle);
+      results += `${currX},${currY} `;
+    }
+    return results.trim();
+  };
+  const saveAsSVG = () => {
+    if (stageRef.current) {
+      const svgPromises = shapes.map((shape) => {
+        switch (shape.type) {
+          case 'rectangle':
+            const rotationRect = shape.rotation || 0;
+            return Promise.resolve(
+              `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationRect}, ${shape.x}, ${shape.y})"/>`
+            );
+          case 'circle':
+            return Promise.resolve(
+              `<circle cx="${shape.x}" cy="${shape.y}" r="${shape.radius}" fill="${shape.fill}" />`
+            );
+          case 'star':
+            const rotationStar = shape.rotation || 0;
+            const starPoints = calculateStarPoints(
+              shape.x,
+              shape.y,
+              shape.numPoints || 5,
+              shape.innerRadius || 10,
+              shape.radius || 20
+            );
+            return Promise.resolve(
+              `<polygon points="${starPoints}" fill="${shape.fill}" transform="rotate(${rotationStar}, ${shape.x}, ${shape.y})"/>`
+            );
+          case 'SVG':
+            if (shape.image) {
+              return imageToDataURL(shape.image).then((dataURL) => {
+                const rotationSVG = shape.rotation || 0;
+                return `
+                  <image 
+                    href="${dataURL}" 
+                    x="${shape.x}" 
+                    y="${shape.y}" 
+                    width="${shape.width}" 
+                    height="${shape.height}" 
+                    transform="rotate(${rotationSVG}, ${shape.x}, ${shape.y})"
+                  />
+                `;
+              });
+            } else {
+              return Promise.resolve('');
+            }
+          default:
+            return Promise.resolve('');
+        }
+      });
 
-  //     Promise.all(svgPromises).then((resolvedSvgElements) => {
-  //       const svgString = `
-  //         <svg xmlns="http://www.w3.org/2000/svg" width="${stageRef.current!.width()}px" height="${stageRef.current!.height()}px">
-  //           ${resolvedSvgElements.join('')}
-  //         </svg>
-  //       `;
-  //       const blob = new Blob([svgString], { type: 'image/svg+xml' });
-  //       saveAs(blob, 'layout.svg');
-  //     });
-  //   }
-  // };
+      Promise.all(svgPromises).then((resolvedSvgElements) => {
+        const svgString = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${stageRef.current!.width()}px" height="${stageRef.current!.height()}px">
+            ${resolvedSvgElements.join('')}
+          </svg>
+        `;
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        saveAs(blob, 'layout.svg');
+      });
+    }
+  };
   ////--------------SaveAsSVG-------------------------
 
   ////--------------SaveAsJson-----------------------
@@ -1622,8 +1622,6 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       reader.onload = (event) => {
         try {
           const jsonData = JSON.parse(event.target?.result as string);
-          // console.log("Imported JSON:", jsonData);
-          // setShapes(jsonData.shapes || []); // Assuming shapes are under `shapes` key
           const importedShapes: Shape[] = (jsonData.shapes || []).map((shape: any) => ({
             ...shape,
             x: Number(shape.x),
@@ -1633,13 +1631,11 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             radius: shape.radius ? Number(shape.radius) : undefined,
             rotation: shape.rotation ? Number(shape.rotation) : undefined,
             scaleY: shape.scaleY ? Number(shape.scaleY) : undefined,
-            scaleX: shape.scaleX ? Number(shape.scaleY) : undefined,
+            scaleX: shape.scaleX ? Number(shape.scaleX) : undefined, // Fixed scaleX assignment
             innerRadius: shape.innerRadius ? Number(shape.innerRadius) : undefined,
-            numPoints:  shape.numPoints ? Number(shape.numPoints) : undefined,
-            strokeWidth:  shape.strokeWidth ? Number(shape.strokeWidth) : undefined,
-            // Convert other numerical properties as needed
+            numPoints: shape.numPoints ? Number(shape.numPoints) : undefined,
+            strokeWidth: shape.strokeWidth ? Number(shape.strokeWidth) : undefined,
           }));
-
           setShapes(importedShapes);
         } catch (error) {
           console.error("Invalid JSON file:", error);
@@ -1651,6 +1647,14 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       reader.readAsText(file);
     }
   };
+
+  // Cleanup effect to reset shapes on unmount or when loading state changes
+  useEffect(() => {
+    return () => {
+      setShapes([]); // Clear shapes when component unmounts or before re-running
+    };
+  }, []);
+
   ////--------------importJson------------------------
 
   
@@ -2308,7 +2312,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         <button onClick={handleRedo} disabled={!canRedo}>
           Redo
         </button>
-        {/* <button style={{
+         <button style={{
           backgroundColor: "#4CAF50", // Green background
           marginLeft: "10px",
           color: "white", // White text
@@ -2325,7 +2329,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#45a049")} // Darker green on hover
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#4CAF50")} // Revert back on mouse leave
         onClick={saveAsSVG}
-        >Save as SVG</button> */}
+        >Save as SVG</button>
         <button style={{
           backgroundColor: "#4CAF50", // Green background
           marginLeft: "10px",
