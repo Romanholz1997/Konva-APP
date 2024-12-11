@@ -13,7 +13,9 @@ import {
   faGripVertical, 
   faBorderAll, 
   faPlus  ,
-  faUserFriends
+  faUserFriends,
+  faCut,
+  faPaste
 } from '@fortawesome/free-solid-svg-icons';
 
 interface CustomRightMenu {
@@ -33,6 +35,9 @@ interface CustomRightMenu {
   selectedIds: string[];
   handleGroup: () => void;
   areShapesGrouped: () => boolean;
+  handleCut: () => void;
+  handlePaste: () => void;
+  isCut: boolean;
 }
 
 const RightContext: React.FC<CustomRightMenu> = ({
@@ -51,7 +56,10 @@ const RightContext: React.FC<CustomRightMenu> = ({
   handleCrossFair,
   handleGridLine,
   handleGroup,
-  areShapesGrouped
+  areShapesGrouped,
+  handleCut,
+  handlePaste,
+  isCut,
 }) => {
   const menuWidth = 200; // Approximate width of the menu
   const menuHeight = 450; // Approximate height of the menu
@@ -155,8 +163,24 @@ const RightContext: React.FC<CustomRightMenu> = ({
           <FontAwesomeIcon icon={faGripHorizontal} style={{ marginRight: '8px', width:'15px'  }} />
           Flip Horizontal
         </li>
+        <li
+          onClick={handleCut}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faCut} style={{ marginRight: '8px', width:'15px'  }} />
+          Cut (Ctrl + X)
+        </li>        
       </>
       }
+      {isCut && 
+        <li
+          onClick={handlePaste}
+          style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={faPaste} style={{ marginRight: '8px', width:'15px'  }} />
+          Paste (Ctrl + V)
+        </li>
+      }      
       <li
         onClick={() => {
           handleCrossFair();

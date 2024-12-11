@@ -43,6 +43,11 @@ import {
 
 import { CanvasData, LayerData, Layers, CanvasStage } from "../types/canvasTypes";
 
+interface BaseShape {
+  id: string;
+  x: number;
+  y: number;
+}
 interface SelectRectangle {
   x: number;
   y: number;
@@ -64,6 +69,16 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   const [nextId, setNextId] = useState<number>(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editShapes, setEditShapes] = useState<Shape[]>([]);
+  const [cutShapes, setCutShapes] = useState<string[]>([]);
+  const [isCut, setIsCut] = useState(false);
+  const [cutPoint, setCutPoint] = useState<{ x: number; y: number }>({
+    x:0,
+    y:0
+  });
+  const [pastePoint, setPastePoint] = useState<{ x: number; y: number }>({
+    x:0,
+    y:0
+  });
   const [groupPosition, setGroupPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipText, setTooltipText] = useState('');
@@ -533,6 +548,9 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     if (!pointer) return;
     // Check if the rectangle is among the selected rectangles
     setMenuPos({ x: pointer.x, y: pointer.y});
+    const x = (pointer.x - stagePos.x) / stageScale
+    const y = (pointer.y - stagePos.y) / stageScale
+    setPastePoint({x, y});
   };
   const onClickTap = (e: Konva.KonvaEventObject<MouseEvent>) => {
 
@@ -783,18 +801,52 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     }
   };
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
-    const newShapes = shapes.map((shape) => {
-      if (shape.id === id) {
+    // const newShapes = shapes.map((shape) => {
+    //   if (shape.id === id) {
+    //     const newPos = snapToGrid({ x: e.target.x(), y: e.target.y() });
+    //     return {
+    //       ...shape,
+    //       x: snapEnabled? newPos.x : e.target.x(),
+    //       y: snapEnabled? newPos.y : e.target.y(),
+    //     };
+    //   }
+    //   return shape;
+    // });
+    setShapes((prevShapes: Shape[]) => {
+      return prevShapes.map((shape) => {
+        if (shape.id !== id) return shape; // Only process the shape being moved
+    
         const newPos = snapToGrid({ x: e.target.x(), y: e.target.y() });
-        return {
-          ...shape,
-          x: snapEnabled? newPos.x : e.target.x(),
-          y: snapEnabled? newPos.y : e.target.y(),
-        };
-      }
-      return shape;
+        const newX = snapEnabled ? newPos.x : e.target.x();
+        const newY = snapEnabled ? newPos.y : e.target.y();
+    
+        // Collision detection
+        let collisionShape: Shape | null = null; // Explicitly type as Shape or null
+        const isColliding = prevShapes.some((other) => {
+          if (other.id !== id) {
+            const collides = isOverlap(
+              { ...shape, x: newX, y: newY },
+              other
+            );
+            if (collides) {
+              collisionShape = other; // Capture the colliding shape
+            }
+            return collides;
+          }
+          return false;
+        });
+        if (isColliding && collisionShape) {
+          // Adjust the shape's position based on the colliding shape's position
+          return {
+            ...shape,
+            x: (collisionShape as BaseShape).x - 100, // Adjust based on the colliding shape
+            y: (collisionShape as BaseShape).y
+          };
+        }
+        return { ...shape, x: newX, y: newY }; // Update position if no collision
+      });
     });
-    setShapes(newShapes);
+    // setShapes(newShapes);
     saveStateDebounced();
   };
   const snapToGrid = (pos: { x: number; y: number }) => {
@@ -1424,6 +1476,115 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       setSelectedIds([]);
     }
   };
+  const handleCut = () => {
+    setIsCut(true);
+    handleCloseMenu();
+    const selectedShapes = shapes.filter(shape => selectedIds.includes(shape.id));
+    const minX = selectedShapes.length > 0 
+      ? Math.min(...selectedShapes.map(shape => shape.x)) 
+      : 0;
+    const minY = selectedShapes.length > 0 
+      ? Math.min(...selectedShapes.map(shape => shape.y)) 
+      : 0;
+    setCutPoint({x: minX, y: minY});
+    setCutShapes(selectedIds);
+  }
+  const handlePaste = () => {
+    const lengthX = pastePoint.x - cutPoint.x;
+    const lengthY = pastePoint.y - cutPoint.y;
+    console.log(pastePoint);
+    if (isCut) {
+      setShapes((prevShapes) => {
+        return prevShapes.map((shape) => {
+          if (!cutShapes.includes(shape.id)) return shape;
+          const newX = (shape.x + lengthX) > CANVAS_WIDTH ? CANVAS_WIDTH - 50: (shape.x + lengthX);
+          const newY = (shape.y + lengthY)> CANVAS_HEIGHT ? CANVAS_HEIGHT - 50 : (shape.y + lengthY);
+          // Collision detection
+          const isColliding = prevShapes.some(
+            (other) =>
+              other.id !== shape.id &&
+              isOverlap(
+                { ...shape, x: newX, y: newY },
+                other
+              )
+          );
+
+          if (isColliding) {
+            return shape; // Prevent movement
+          }
+
+          return { ...shape, x: newX, y: newY };
+        });
+      });
+      // setShapes((prevShapes) =>
+      //   prevShapes.map((shape) =>
+      //     cutShapes.includes(shape.id) ? { ...shape, x: (shape.x + lengthX) > CANVAS_WIDTH ? CANVAS_WIDTH - 50: (shape.x + lengthX), y: (shape.y + lengthY)> CANVAS_HEIGHT ? CANVAS_HEIGHT - 50 : (shape.y + lengthY) } : shape
+      //   )
+      // );
+    }
+    setIsCut(false);
+    handleCloseMenu();
+    setCutShapes([]);
+  }
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "x" && e.ctrlKey) {
+        handleCut();
+      }
+      if (e.key === "v" && e.ctrlKey) {
+        e.preventDefault(); // Prevent default paste behavior
+        handlePaste();
+      }
+    };
+  
+    // Add event listener to the window object
+    window.addEventListener("keydown", handleKeyDown);
+  
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isCut, cutPoint, pastePoint, cutShapes, selectedIds]); ////Ctrl + X, Ctrl + V
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        clearCutMemory();
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      const stage = stageRef.current;
+      if (!stage) return;
+    
+      const container = stage.container();
+      const rect = container.getBoundingClientRect();
+    
+      // Check if the click is outside the bounding rectangle of the stage container
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        clearCutMemory();
+      }
+    };
+  
+    const clearCutMemory = () => {
+      setIsCut(false);
+      setCutShapes([]);
+      // Additional logic to clear any other cut/memory state if needed
+    };
+  
+    // Add event listeners
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("click", handleClickOutside);
+  
+    // Clean up the event listeners on component unmount
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("click", handleClickOutside);
+    };
+  }, []); ////Esc or Click Outside of stage.
   ////--------------rightContext-------------------------
 
 
@@ -1651,7 +1812,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   // Cleanup effect to reset shapes on unmount or when loading state changes
   useEffect(() => {
     return () => {
-      setShapes([]); // Clear shapes when component unmounts or before re-running
+      setShapes([]);
     };
   }, []);
 
@@ -2284,6 +2445,9 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             gridLine={gridLine}
             handleGroup={handleGroup}
             areShapesGrouped={areShapesGrouped}
+            handleCut={handleCut}
+            handlePaste={handlePaste}
+            isCut={isCut}
           />
         )}
       </div>
