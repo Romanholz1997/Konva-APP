@@ -38,7 +38,8 @@ import {
     CircleAttrs,
     SVGAttrs,
     HistoryState,
-    TextAttrs
+    TextAttrs,
+    DeviceAttrs
   } from "../types/types";
 
 import { CanvasData, LayerData, Layers, CanvasStage } from "../types/canvasTypes";
@@ -68,6 +69,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [nextId, setNextId] = useState<number>(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedShapes, setSelectedShapes] = useState<string>();
   const [editShapes, setEditShapes] = useState<Shape[]>([]);
   const [cutShapes, setCutShapes] = useState<string[]>([]);
   const [isCut, setIsCut] = useState(false);
@@ -217,7 +219,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         | "circle"
         | "star"
         | "science"
-        | "text";
+        | "text"
+        | "devices";
 
       let newShape: Shape;
       switch (shapeType) {
@@ -225,6 +228,21 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
           newShape = {
             id: "rectangle_" + nextId,
             type: "rectangle",
+            x: pointer.x,
+            y: pointer.y,
+            width: 100,
+            height: 100,
+            fill: "#0000ff",
+            rotation: 0,
+            scaleX:1,
+            scaleY:1,
+            groupId: null
+          };
+          break;
+        case "devices":
+          newShape = {
+            id: "rectangle_" + nextId,
+            type: "device",
             x: pointer.x,
             y: pointer.y,
             width: 100,
@@ -312,23 +330,23 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     [shapes, nextId, stagePos, stageScale]
   );
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!stageRef.current) return;
+    if (!stageRef.current) return;
 
-  const stage = stageRef.current;
-  const container = stage.container();
-  const stageRect = container.getBoundingClientRect();
+    const stage = stageRef.current;
+    const container = stage.container();
+    const stageRect = container.getBoundingClientRect();
 
-  const pointer = {
-      x: (e.clientX - stageRect.left - stagePos.x) / stageScale,
-      y: (e.clientY - stageRect.top - stagePos.y) / stageScale,
-  };
+    const pointer = {
+        x: (e.clientX - stageRect.left - stagePos.x) / stageScale,
+        y: (e.clientY - stageRect.top - stagePos.y) / stageScale,
+    };
 
-  const overlapping = isOverlapping(pointer.x, pointer.y);
+    const overlapping = isOverlapping(pointer.x, pointer.y);
 
-  // Set the dropEffect based on overlap
-  e.dataTransfer.dropEffect = overlapping ? "none" : "copy";
+    // Set the dropEffect based on overlap
+    e.dataTransfer.dropEffect = overlapping ? "none" : "copy";
   };
   ////--------------dragDrop-------------------
 
@@ -459,6 +477,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     }
     else{
       if (isSelecting) {
+        setSelectedShapes('');
         const selBox = selectionRect!;
         const shapesToSelect: string[] = [];
         const box = {
@@ -765,12 +784,53 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       layerRef.current!.batchDraw();
     }
   };
+  const handleShapeClickRect = (
+    e: Konva.KonvaEventObject<MouseEvent>,
+    id: string,
+    shapeType: string
+  ) => {
+    e.cancelBubble = true;
+
+    console.log(shapeType);
+    const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
+    const isSelected = selectedIds.includes(id);
+
+    if (!metaPressed && !isSelected) {
+      setSelectedIds([id]);
+      setSelectedShapes(shapeType);
+    } else if (metaPressed && isSelected) {
+      setSelectedIds(selectedIds.filter((_id) => _id !== id));
+      setSelectedShapes(shapeType);
+
+      toast("Ctrl clicked", {
+        position: "top-right",
+        autoClose: 1000, // Change this value to adjust the display duration
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "light",
+      });
+    } else if (metaPressed && !isSelected) {
+      setSelectedIds([...selectedIds, id]);
+      setSelectedShapes(shapeType);
+      toast("Ctrl clicked", {
+        position: "top-right",
+        autoClose: 1000, // Change this value to adjust the display duration
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "light",
+      });
+    }
+  };
   const handleShapeClick = (
     e: Konva.KonvaEventObject<MouseEvent>,
     id: string
   ) => {
     e.cancelBubble = true;
-
+    setSelectedShapes('');
     const metaPressed = e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey;
     const isSelected = selectedIds.includes(id);
 
@@ -1100,12 +1160,21 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             scaleY:shape.scaleY
           };
         }
-        else if (shape.type === "location") {
+        else if (shape.type === "device") {
           return {
             ...shape,
             x: node.x(),
             y: node.y(),
             rotation,
+            scaleX:shape.scaleX,
+            scaleY:shape.scaleY
+          };
+        }
+        else if (shape.type === "location") {
+          return {
+            ...shape,
+            x: node.x(),
+            y: node.y(),
             width: Math.max(5, Math.abs(node.width() * scaleX)),
             height: Math.max(5, Math.abs(node.height() * scaleY)),
             scaleX:shape.scaleX,
@@ -1646,7 +1715,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         }
       }
     });
-  };  
+  };                       
   const calculateStarPoints = (centerX: number, centerY: number, numPoints: number, innerRadius: number, outerRadius: number): string => {
     let results = '';
     const angle = Math.PI / numPoints;
@@ -1725,16 +1794,16 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       name: "layer1",
       x: 0,
       y: 0,
-      width: CANVAS_WIDTH,
-      height: CANVAS_HEIGHT,
+      w: CANVAS_WIDTH,
+      h: CANVAS_HEIGHT,
       image: "./background.svg"// Ensure `shapes` is defined in your scope
     };
     const jsonLayer2: LayerData = {
       name: "layer2",
       x: 0,
       y: 0,
-      width: CANVAS_WIDTH,
-      height: CANVAS_HEIGHT,
+      w: CANVAS_WIDTH,
+      h: CANVAS_HEIGHT,
       shapes: shapes // Ensure `shapes` is defined in your scope
     }; 
     const jsonLayers: Layers = {
@@ -1754,6 +1823,9 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       },
       canvasstage: jsonStage
     };  
+    // const jsonData = {
+    //   shapes: shapes
+    // };  
     const jsonString = JSON.stringify(jsonData, null, 2); // Pretty print with 2 spaces
 
     // Create a Blob from the JSON string
@@ -2014,6 +2086,20 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                             />
                           );
                         }
+                        case "device": {
+                          const rect = shape as DeviceAttrs;
+                          return (
+                            <Rectangle
+                              {...commonProps}
+                              key={shape.id}
+                              x={rect.x}
+                              y={rect.y}
+                              width={rect.width}
+                              height={rect.height}
+                              fill={rect.fill}                             
+                            />
+                          );
+                        }
                         case "location": {
                           const rect = shape as locationAttrs;
                           return (
@@ -2132,11 +2218,43 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                         width={rect.width}
                         height={rect.height}
                         fill={rect.fill}
-                        dragBoundFunc={dragBoundFunc}
+                        dragBoundFunc={dragBoundFunc}                        
                       />
                     );
                   }
-                  if (shape.type === "location") {
+                  else if (shape.type === "device") {
+                    const rect = shape as DeviceAttrs;
+                    const dragBoundFunc = (pos: { x: number; y: number }) => {
+                      const stage = stageRef.current;
+                      if (stage) {
+                        const scale = stageScale;
+                        const xOffset = stagePos.x;
+                        const yOffset = stagePos.y;
+                        const minX = (xOffset + rect.width/2) * scale;
+                        const minY = (yOffset + rect.height/2) * scale;
+                        const maxX = (CANVAS_WIDTH -  rect.width/2) * scale  + stagePos.x;
+                        const maxY = (CANVAS_WIDTH -  rect.height/2) * scale  + stagePos.y;  
+                        let x = pos.x;
+                        let y = pos.y;
+                        x = Math.max(minX, Math.min(x, maxX));
+                        y = Math.max(minY, Math.min(y, maxY));
+                        return { x, y };
+                      }
+                      return pos;
+                    };
+                    return (
+                      <Rectangle
+                        {...commonProps}
+                        key={shape.id}
+                        width={rect.width}
+                        height={rect.height}
+                        fill={rect.fill}
+                        dragBoundFunc={dragBoundFunc}
+                        onShapeClick={(e: Konva.KonvaEventObject<MouseEvent>) => handleShapeClickRect(e, shape.id, shape.type)}
+                      />
+                    );
+                  }
+                  else if (shape.type === "location") {
                     const rect = shape as locationAttrs;
                     const dragBoundFunc = (pos: { x: number; y: number }) => {
                       const stage = stageRef.current;
@@ -2167,6 +2285,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                         offsetY={0}
                         strokeWidth={rect.strokeWidth}
                         dragBoundFunc={dragBoundFunc}
+                        onShapeClick={(e: Konva.KonvaEventObject<MouseEvent>) => handleShapeClickRect(e, shape.id, shape.type)}
                       />
                     );
                   }
@@ -2237,7 +2356,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                         key={shape.id}
                         radius={circle.radius}
                         fill={circle.fill}
-                        dragBoundFunc={dragBoundFunc}
+                        dragBoundFunc={dragBoundFunc}                      
                       />
                     );
                   } else if (shape.type === "star") {
@@ -2346,8 +2465,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             )}
             <Transformer
               ref={transformerRef}
-              rotateEnabled={true}
-              enabledAnchors={[
+              rotateEnabled={selectedShapes !== "location"}
+              enabledAnchors={ selectedShapes !== "device" ?[ 
                 "top-left",
                 "top-right",
                 "bottom-left",
@@ -2356,7 +2475,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                 "middle-right",
                 "top-center",
                 "bottom-center",
-              ]}
+              ] : []}
               onTransformEnd={handleTransformEnd} // Attach handler here
             />
           </Layer>  

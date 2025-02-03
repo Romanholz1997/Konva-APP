@@ -3,7 +3,7 @@ import {
     ShapePropertyKey
 } from "../types/types";
 
-type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG' | 'text' | 'location';
+type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG' | 'text' | 'location' | 'device';
 
 interface CustomRightMenu {
     handleSave: () => void;

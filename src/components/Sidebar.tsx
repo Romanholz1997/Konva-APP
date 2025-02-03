@@ -57,8 +57,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onDragStart,  isDrawRectangle,
         }}
         onClick={() => handleDrawRectangle(!isDrawRectangle)}
       >
-        Draw Rectangle
+        Locations
       </div>
+      <DraggableItem shapeType="devices" onDragStart={onDragStart} />
     </div>
   );
 };

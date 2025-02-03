@@ -6,8 +6,8 @@ import { Shape } from "./types";
     name: string;
     x: number;
     y: number;
-    width: number;
-    height: number;
+    w: number;
+    h: number;
     image?: string;
     shapes?: Shape[];
   }

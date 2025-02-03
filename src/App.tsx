@@ -20,7 +20,6 @@ const App: React.FC = () => {
       setSharedValue(newValue);
   };
 
-
   return (
     <div style={{ display: "flex" }}>
       <Sidebar onDragStart={handleDragStart} isDrawRectangle={sharedValue} handleDrawRectangle={updateValue} />

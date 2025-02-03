@@ -14,6 +14,21 @@ export interface RectangleAttrs {
   groupId?: string | null;
 }
 
+export interface DeviceAttrs {
+  id: string;
+  type: 'device';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill: string;
+  rotation?: number;
+  scaleY?:number;
+  scaleX?:number;
+  radius?: number;
+  innerRadius?: number;
+  groupId?: string | null;
+}
 export interface CircleAttrs {
   id: string;
   type: 'circle';
@@ -94,7 +109,7 @@ export interface TextAttrs {
   groupId?: string | null;
 }
 
-export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs | TextAttrs | locationAttrs;
+export type Shape = RectangleAttrs | CircleAttrs | StarAttrs | SVGAttrs | TextAttrs | locationAttrs | DeviceAttrs;
 
 export type ShapePropertyKey =
   | keyof RectangleAttrs
@@ -103,6 +118,7 @@ export type ShapePropertyKey =
   | keyof SVGAttrs
   | keyof TextAttrs
   | keyof locationAttrs
+  | keyof DeviceAttrs
 
 export interface HistoryState {
   shapes: Shape[];
