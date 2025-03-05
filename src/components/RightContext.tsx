@@ -15,7 +15,8 @@ import {
   faPlus  ,
   faUserFriends,
   faCut,
-  faPaste
+  faPaste,
+  faLocationCrosshairs
 } from '@fortawesome/free-solid-svg-icons';
 
 interface CustomRightMenu {
@@ -38,6 +39,8 @@ interface CustomRightMenu {
   handleCut: () => void;
   handlePaste: () => void;
   isCut: boolean;
+  handleLocation: () => void;
+  isLocation: number;
 }
 
 const RightContext: React.FC<CustomRightMenu> = ({
@@ -60,9 +63,11 @@ const RightContext: React.FC<CustomRightMenu> = ({
   handleCut,
   handlePaste,
   isCut,
+  handleLocation,
+  isLocation
 }) => {
-  const menuWidth = 200; // Approximate width of the menu
-  const menuHeight = 450; // Approximate height of the menu
+  const menuWidth = 200;
+  const menuHeight = 550;
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
@@ -71,12 +76,12 @@ const RightContext: React.FC<CustomRightMenu> = ({
   if(selectedIds.length > 0)
   {
      x = (menuPosition.x + 25) + menuWidth > viewportWidth ? (menuPosition.x - 25) - menuWidth : (menuPosition.x + 25);
-     y = (menuPosition.y + 10) + menuHeight > viewportHeight ? (menuPosition.y + 60) - menuHeight : (menuPosition.y + 10);
+     y = (menuPosition.y + 10) + menuHeight > viewportHeight ? (menuPosition.y + 10) - (menuPosition.y  + menuHeight  - viewportHeight) : (menuPosition.y + 10);
   }
   else 
   {
     x = (menuPosition.x + 25) + menuWidth > viewportWidth ? (menuPosition.x - 25) - menuWidth : (menuPosition.x + 25);
-    y = (menuPosition.y + 10) + 150 > viewportHeight ? (menuPosition.y + 60) - 150 : (menuPosition.y + 10);
+    y = (menuPosition.y + 10) + 200 > viewportHeight ? (menuPosition.y + 60) - 200 : (menuPosition.y + 10);
   }
   return (
     <ul
@@ -210,6 +215,26 @@ const RightContext: React.FC<CustomRightMenu> = ({
       >
         <FontAwesomeIcon icon={faSyncAlt} style={{ marginRight: '8px', width:'15px'  }} />
         {snapEnabled ? 'Snap Enabled' : 'Snap Disabled'}
+      </li>
+      <li
+        onClick={() => {
+          handleLocation();
+          onClose();
+        }}
+        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+      >
+        <FontAwesomeIcon icon={faLocationCrosshairs} style={{ marginRight: '8px', width:'15px'  }} />
+        {isLocation === 0 ?  'All' : isLocation === 1 ? 'Location' : 'Locate'}
+      </li>
+      <li
+        onClick={() => {
+          handleCrossFair();
+          onClose();
+        }}
+        style={{ display: 'flex', alignItems: 'center', padding: '5px', cursor: 'pointer' }}
+      >
+        <FontAwesomeIcon icon={faPlus  } style={{ marginRight: '8px', width:'15px'  }} />
+        {isCrossFair ? 'Disable Crosshair' : 'Enable Crosshair'}
       </li>
       {selectedIds.length > 0 && <li
           onClick={() => {

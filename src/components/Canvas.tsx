@@ -87,6 +87,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   const [tooltipX, setTooltipX] = useState(0);
   const [tooltipY, setTooltipY] = useState(0);
   const [isPanning, setIsPanning] = useState(false);
+  const [isRightContext, setIsRightContext] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [mouseCoords, setMouseCoords] = useState<{ x: number; y: number }>({
     x:0,
@@ -106,7 +107,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
   });
   const [showMouseInfo, setShowMouseInfo] = useState(false);
   const [crossFair, setCrossFair] = useState(true);
-
+  const [isLocation, setIsLocation] = useState(0);
   const selection = React.useRef<{
     visible: boolean;
     x1: number;
@@ -159,8 +160,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         if (shape.type === "rectangle") {
           const rect = shape as RectangleAttrs;
           return (
-            x >= rect.x-rect.width/2 && x< rect.x + rect.width/2 &&
-            y>= rect.y -rect.height/2 && y< rect.y + rect.height/2
+            x >= rect.x - rect.width/2 && x < rect.x + rect.width/2 &&
+            y>= rect.y - rect.height/2 && y< rect.y + rect.height/2
           )
           // return isPointInRotatedRect(x, y, rect);
         } else if (shape.type === "circle") {
@@ -188,6 +189,13 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
         return false;
       });
   };
+  const isOutPointStage = (x: number, y: number): boolean => {
+    if((50 < x && x < CANVAS_WIDTH -50) && (50 < y && y < CANVAS_HEIGHT-50))
+    {
+      return false
+    }
+    return true;
+  }
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -207,10 +215,9 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       };
 
       const overlapping = isOverlapping(pointer.x, pointer.y);
-
-      if (overlapping) {
+      const isoutPointer = isOutPointStage(pointer.x, pointer.y);
+      if (overlapping || isoutPointer) {
         // Optionally, provide feedback to the user
-        alert("Cannot place the shape over an existing one.");
         return;
       }
 
@@ -344,42 +351,89 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     };
 
     const overlapping = isOverlapping(pointer.x, pointer.y);
+    const isoutPointer = isOutPointStage(pointer.x, pointer.y);
 
     // Set the dropEffect based on overlap
-    e.dataTransfer.dropEffect = overlapping ? "none" : "copy";
+    e.dataTransfer.dropEffect = isoutPointer || overlapping ? "none" : "copy";
   };
   ////--------------dragDrop-------------------
 
   ////--------------stageProps---------------------------
   const handleWheel = (e: KonvaEventObject<WheelEvent>): void => {
-      e.evt.preventDefault();
-  
-      const stage = stageRef.current;
-      if (!stage) return;
-  
-      const oldScale = stageScale;
-      const pointer = stage.getPointerPosition();
-      if (!pointer) return;
-  
-      const scaleBy = 1.5;
-      const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
-  
-      const mousePointTo = {
-        x: (pointer.x - stagePos.x) / oldScale,
-        y: (pointer.y - stagePos.y) / oldScale,
-      };
-  
-      const newPos = {
-        x: (pointer.x - mousePointTo.x * newScale) > 0 ? 0: pointer.x - mousePointTo.x * newScale,
-        y: (pointer.y - mousePointTo.y * newScale) > 0 ? 0: pointer.y - mousePointTo.y * newScale,
-      };
-  
+    e.evt.preventDefault();
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const oldScale = stageScale;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const scaleBy = 1.1;
+    const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+
+    const mousePointTo = {
+      x: (pointer.x - stagePos.x) / oldScale,
+      y: (pointer.y - stagePos.y) / oldScale,
+    };
+
+    const newPos = {
+      x: (pointer.x - mousePointTo.x * newScale) > 0 ? 0: ( pointer.x - mousePointTo.x * newScale) ,
+      y: (pointer.y - mousePointTo.y * newScale) > 0 ? 0: pointer.y - mousePointTo.y * newScale,
+    };
+    const containerWidth = window.innerWidth - 230;
+    if(CANVAS_WIDTH * newScale > containerWidth)
+    {
       if(newScale > 0.18 && newScale < 5){
         setStageScale(newScale);
         setStagePos(newPos);
-      }   
-      
-  };    
+      }
+    }
+    else{
+      setStagePos(newPos);
+    }
+    
+  };
+  // const handleWheel = (e: KonvaEventObject<WheelEvent>): void => {
+  //   e.evt.preventDefault();
+  
+  //   const stage = stageRef.current;
+  //   if (!stage) return;
+  
+  //   const oldScale = stageScale;
+  //   const pointer = stage.getPointerPosition();
+  //   if (!pointer) return;
+  
+  //   const scaleBy = 1.2;
+  //   const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+  
+  //   const mousePointTo = {
+  //     x: (pointer.x - stagePos.x) / oldScale,
+  //     y: (pointer.y - stagePos.y) / oldScale,
+  //   };
+  
+  //   const newPos = {
+  //     x: Math.max(0, pointer.x - mousePointTo.x * newScale),
+  //     y: Math.max(0, pointer.y - mousePointTo.y * newScale),
+  //   };
+  
+  //   // Check if the new position is within the boundaries of the window
+  //   const stageWidth = stage.width() * newScale;
+  //   const stageHeight = stage.height() * newScale;
+  
+  //   if (newScale > 0.18 && newScale < 5) {
+  //     // Adjust position if stage is smaller than the window dimensions
+  //     if (stageWidth < window.innerWidth) {
+  //       newPos.x = (window.innerWidth - stageWidth) / 2; // Center the stage horizontally
+  //     }
+  //     if (stageHeight < window.innerHeight) {
+  //       newPos.y = (window.innerHeight - stageHeight) / 2; // Center the stage vertically
+  //     }
+  
+  //     setStageScale(newScale);
+  //     setStagePos(newPos);
+  //   }
+  // };
+   
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {    
     setTooltipVisible(false);
     // Deselect shapes if clicked on empty area
@@ -387,18 +441,18 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       const isElement = e.target.findAncestor(".elements-container", true);
       const isTransformer = e.target.findAncestor("Transformer");
       if (isElement || isTransformer) {
-      return;
+        return;
       }      
       if (e.evt.button === 2) {
-      e.evt.preventDefault(); // Prevent the context menu from appearing
-      setIsPanning(true);
-      const pointerPos = stageRef.current?.getPointerPosition();
-      if (pointerPos) {
-          setLastPos({
-          x: (pointerPos.x - stagePos.x) / stageScale,
-          y: (pointerPos.y - stagePos.y) / stageScale,
-          });
-      }
+        e.evt.preventDefault(); // Prevent the context menu from appearing
+        setIsPanning(true);
+        const pointerPos = stageRef.current?.getPointerPosition();
+        if (pointerPos) {
+            setLastPos({
+            x: (pointerPos.x - stagePos.x) / stageScale,
+            y: (pointerPos.y - stagePos.y) / stageScale,
+            });
+        }
       }  
       else{
         setIsSelecting(true);
@@ -410,22 +464,22 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
           height: 0,
         });
       } 
-  }
+    }
   };   
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
     e.evt.preventDefault();
     if (isPanning) {
-      setMenuPos(null);
       const stage = stageRef.current;
       if(!stage) return;
       const pointerPos = stage.getPointerPosition();
+      
       if (pointerPos) {
+        setIsRightContext(true);
         // Calculate new position based on pointer position and last position
         const newPos = {
           x: pointerPos.x - lastPos.x * stageScale,
           y: pointerPos.y - lastPos.y * stageScale,
         };
-    
           // Calculate the scaled canvas dimensions
         const scaledCanvasWidth = CANVAS_WIDTH * stageScale;
         const scaledCanvasHeight = CANVAS_HEIGHT * stageScale;
@@ -452,13 +506,16 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     }  
     const pos = stageRef.current?.getPointerPosition();
     if (pos) {
-      
-      if (e.target === stageRef.current) {
-        setShowMouseInfo(true);
-        setMouseCoords({ x: pos.x, y: pos.y });        
-      } else {
+      const target = e.target;
+      if (target.hasName('shapeLayer') || target.getParent() === layerRef.current)
+      {
         setShowMouseInfo(false);
       }
+      else
+      {
+        setShowMouseInfo(true);
+        setMouseCoords({ x: pos.x, y: pos.y });
+      }      
     }
     if (!isSelecting) return;
     const position = stageRef.current!.getPointerPosition()!;
@@ -486,7 +543,31 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
           width: Math.abs(selBox.width),
           height: Math.abs(selBox.height),
         };
-  
+        if(selectionRect?.width !== 0 || selectionRect?.height !== 0)
+        {
+          toast(`X: ${box.x}, Y: ${box.y} , Width: ${box.width} , Height: ${box.height}`, {
+            position: "top-right",
+            autoClose: 1000, // Change this value to adjust the display duration
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "light",
+          });
+        }
+        else
+        {
+          toast(`You clicked`, {
+            position: "top-right",
+            autoClose: 1000, // Change this value to adjust the display duration
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: "light",
+          });
+        }
+        
         const container = layerRef.current;
         if (!container) return;
   
@@ -551,7 +632,6 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             setShapes(prev => [...prev, locationShape]);
             handleDrawRectangle(false);
           }
-          
           // setSelectRectangle(prev => [...prev, select]);          
           saveStateDebounced();
         }        
@@ -566,10 +646,14 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
     // Check if the rectangle is among the selected rectangles
-    setMenuPos({ x: pointer.x, y: pointer.y});
+    if(isRightContext === false)
+    {
+      setMenuPos({ x: pointer.x, y: pointer.y});      
+    }
     const x = (pointer.x - stagePos.x) / stageScale
     const y = (pointer.y - stagePos.y) / stageScale
     setPastePoint({x, y});
+    setIsRightContext(false);
   };
   const onClickTap = (e: Konva.KonvaEventObject<MouseEvent>) => {
 
@@ -636,7 +720,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       y: name === 'groupY' ? newValue : prevGroupPosition!.y,
     }));
   };
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     const numericProps = [
       'x',
@@ -1240,6 +1324,10 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
 
 
   ////--------------rightContext-------------------------
+  const handleLocation = () => {
+    setIsLocation(prev => (prev + 1) % 3);
+    console.log(isLocation);
+  };
   const handleCloseMenu = () => {
     setMenuPos(null);
   };  
@@ -1283,7 +1371,6 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
                   return { ...rect, y: newMaxY };
               default:
                 return rect;
-             
             }
           }
         }
@@ -1736,6 +1823,26 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             return Promise.resolve(
               `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationRect}, ${shape.x}, ${shape.y})"/>`
             );
+          case 'device':
+            const rotationDevice = shape.rotation || 0;
+            return Promise.resolve(
+              `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" fill="${shape.fill}" transform="rotate(${rotationDevice}, ${shape.x}, ${shape.y})"/>`
+            );
+          case 'location':
+            const rotationLocation = shape.rotation || 0;
+            return Promise.resolve(
+              `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" stroke="${shape.fill}" fill="none" stroke-width="${shape.strokeWidth}" transform="rotate(${rotationLocation}, ${shape.x}, ${shape.y})"/>`
+            );
+          case 'text':
+            // Calculate text width based on font size and text content
+            const textWidth = shape.text.length * shape.fontSize * 0.6; // Approximation
+            const textX = shape.x + textWidth / 2; // Centering
+            const textY = shape.y + shape.fontSize / 2; // Centering vertically
+            return Promise.resolve(
+              `<text x="${textX}" y="${textY}" fill="${shape.fill || 'black'}" font-size="${shape.fontSize}" text-anchor="middle" alignment-baseline="middle">
+                ${shape.text || ''}
+              </text>`
+            );
           case 'circle':
             return Promise.resolve(
               `<circle cx="${shape.x}" cy="${shape.y}" r="${shape.radius}" fill="${shape.fill}" />`
@@ -1855,21 +1962,41 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
       reader.onload = (event) => {
         try {
           const jsonData = JSON.parse(event.target?.result as string);
-          const importedShapes: Shape[] = (jsonData.shapes || []).map((shape: any) => ({
-            ...shape,
-            x: Number(shape.x),
-            y: Number(shape.y),
-            width: shape.width ? Number(shape.width) : undefined,
-            height: shape.height ? Number(shape.height) : undefined,
-            radius: shape.radius ? Number(shape.radius) : undefined,
-            rotation: shape.rotation ? Number(shape.rotation) : undefined,
-            scaleY: shape.scaleY ? Number(shape.scaleY) : undefined,
-            scaleX: shape.scaleX ? Number(shape.scaleX) : undefined, // Fixed scaleX assignment
-            innerRadius: shape.innerRadius ? Number(shape.innerRadius) : undefined,
-            numPoints: shape.numPoints ? Number(shape.numPoints) : undefined,
-            strokeWidth: shape.strokeWidth ? Number(shape.strokeWidth) : undefined,
-          }));
-          setShapes(importedShapes);
+          if(jsonData.shapes)
+          {
+            const importedShapes: Shape[] = (jsonData.shapes || []).map((shape: any) => ({
+              ...shape,
+              x: Number(shape.x),
+              y: Number(shape.y),
+              width: shape.width ? Number(shape.width) : undefined,
+              height: shape.height ? Number(shape.height) : undefined,
+              radius: shape.radius ? Number(shape.radius) : undefined,
+              rotation: shape.rotation ? Number(shape.rotation) : undefined,
+              scaleY: shape.scaleY ? Number(shape.scaleY) : undefined,
+              scaleX: shape.scaleX ? Number(shape.scaleX) : undefined, // Fixed scaleX assignment
+              innerRadius: shape.innerRadius ? Number(shape.innerRadius) : undefined,
+              numPoints: shape.numPoints ? Number(shape.numPoints) : undefined,
+              strokeWidth: shape.strokeWidth ? Number(shape.strokeWidth) : undefined,
+            }));
+            setShapes(importedShapes);
+          }
+          else{
+            const importedShapes: Shape[] = (jsonData.canvasstage.layers.layer2.shapes || []).map((shape: any) => ({
+              ...shape,
+              x: Number(shape.x),
+              y: Number(shape.y),
+              width: shape.width ? Number(shape.width) : undefined,
+              height: shape.height ? Number(shape.height) : undefined,
+              radius: shape.radius ? Number(shape.radius) : undefined,
+              rotation: shape.rotation ? Number(shape.rotation) : undefined,
+              scaleY: shape.scaleY ? Number(shape.scaleY) : undefined,
+              scaleX: shape.scaleX ? Number(shape.scaleX) : undefined, // Fixed scaleX assignment
+              innerRadius: shape.innerRadius ? Number(shape.innerRadius) : undefined,
+              numPoints: shape.numPoints ? Number(shape.numPoints) : undefined,
+              strokeWidth: shape.strokeWidth ? Number(shape.strokeWidth) : undefined,
+            }));
+            setShapes(importedShapes);
+          }
         } catch (error) {
           console.error("Invalid JSON file:", error);
         } finally {
@@ -1961,6 +2088,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
           >
             {backgroundImage && (
               <KonvaImage
+                className="background"
                 image={backgroundImage}
                 width={CANVAS_WIDTH}
                 height={CANVAS_HEIGHT}
@@ -2015,6 +2143,7 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
               const elements: React.ReactNode[] = [];
               // Render grouped shapes
               Object.keys(groupedShapes).forEach((groupId) => {
+                if(isLocation === 2) return;
                 const groupShapes = groupedShapes[groupId];              
                 const dragBoundFunc = (pos: { x: number; y: number }, group: Konva.Group) => {
                   const stage = stageRef.current;
@@ -2176,6 +2305,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
               // Render ungrouped shapes
               elements.push(
                 ungroupedShapes.map((shape) => {
+                  // if (cutShapes.includes(shape.id)) return null;
+                  if(isLocation === 1) return null;
                   const commonProps = {
                     id: shape.id,
                     x: shape.x,
@@ -2567,6 +2698,8 @@ const Canvas: React.FC<CanvasProps> = ({isDrawRectangle, handleDrawRectangle}) =
             handleCut={handleCut}
             handlePaste={handlePaste}
             isCut={isCut}
+            handleLocation={handleLocation}
+            isLocation={isLocation}
           />
         )}
       </div>

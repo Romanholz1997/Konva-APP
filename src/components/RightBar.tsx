@@ -8,7 +8,7 @@ type ShapeType = 'rectangle' | 'circle' | 'star' | 'SVG' | 'text' | 'location' |
 interface CustomRightMenu {
     handleSave: () => void;
     getCommonProperty: (propName: ShapePropertyKey) => string | number;
-    handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    handleInputChange: (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => void;
     handleGroupPositionChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     groupPosition: {x: number, y: number} | null;
     selectedIds: string[];
@@ -245,7 +245,8 @@ const RightBar: React.FC<CustomRightMenu> = ({
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '5px' }}>Text:</label>
-              <input
+              <textarea
+                rows={3}
                 name="text"
                 value={getCommonProperty('text') as string || ''}
                 onChange={handleInputChange}

@@ -63,7 +63,7 @@ const Ruler: React.FC<RulerProps> = ({
             <Text
               x={isHorizontal ? position + 4 : 4}
               y={isHorizontal ? 4 : position + 4}
-              text={(unit).toString()}
+              text={(unit * 10).toString()}
               fontSize={10}
               fill="black"
             />

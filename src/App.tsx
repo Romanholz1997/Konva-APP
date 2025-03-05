@@ -16,7 +16,6 @@ const App: React.FC = () => {
   const [sharedValue, setSharedValue] = useState<boolean>(false);
 
   const updateValue = (newValue: boolean) => {
-      console.log("okokok");
       setSharedValue(newValue);
   };
 
